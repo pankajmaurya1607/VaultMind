@@ -1,0 +1,8 @@
+Evaluate the following RAG response for:
+1. Faithfulness - Does the answer stay true to the context?
+2. Answer Relevancy - Does the answer address the question?
+3. Context Precision - How relevant is the retrieved context?
+
+Question: {question}
+Context: {context}
+Answer: {answer}
