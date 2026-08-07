@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, RefreshRequest
@@ -26,5 +26,11 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/logout")
-async def logout():
-    return {"message": "Logged out successfully"}
+async def logout(
+    authorization: str = Header(...),
+    x_refresh_token: str = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    service = AuthService(db)
+    access_token = authorization.removeprefix("Bearer ").strip()
+    return await service.logout(access_token, x_refresh_token or "")

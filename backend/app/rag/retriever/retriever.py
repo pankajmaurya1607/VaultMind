@@ -1,7 +1,7 @@
 import os
 import json
 import logging
-from typing import List
+from typing import List, Optional
 import numpy as np
 from app.config.settings import settings
 from app.rag.embeddings.embedder import embedding_service
@@ -10,10 +10,51 @@ logger = logging.getLogger("eka")
 
 try:
     import pgvector
-    from sqlalchemy import text
+    from sqlalchemy import text as sa_text
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy import create_engine
     _pgvector_available = True
 except Exception:
     _pgvector_available = False
+    AsyncSession = None
+
+
+def _build_vector_str(vector: List[float]) -> str:
+    return "[" + ",".join(str(v) for v in vector) + "]"
+
+
+def _build_search_query(vector_str: str, department_ids: List[int], top_k: int):
+    dept_filter = ""
+    if department_ids:
+        ids = ",".join(str(d) for d in department_ids)
+        dept_filter = f"AND d.department_id IN ({ids})"
+    return sa_text(f"""
+        SELECT c.id, c.text, c.metadata, c.chunk_index, c.document_id,
+               1 - (c.embedding <=> '{vector_str}'::vector) as score,
+               d.filename as original_filename
+        FROM chunks c
+        JOIN documents d ON d.id = c.document_id
+        WHERE c.embedding IS NOT NULL
+          AND 1 - (c.embedding <=> '{vector_str}'::vector) >= {settings.SIMILARITY_THRESHOLD}
+        {dept_filter}
+        ORDER BY score DESC
+        LIMIT {top_k}
+    """)
+
+
+def _rows_to_results(rows) -> List[dict]:
+    results = []
+    for row in rows:
+        score = float(row.score) if row.score is not None else 0.0
+        results.append({
+            "document_id": row.document_id,
+            "filename": row.original_filename,
+            "chunk_index": row.chunk_index,
+            "text": row.text,
+            "metadata": row.metadata,
+            "score": score,
+        })
+    return results
 
 
 class Retriever:
@@ -22,15 +63,27 @@ class Retriever:
         os.makedirs(self.vector_store_dir, exist_ok=True)
         self._local_store = {}
 
-    def search(self, query: str, department_ids: List[int], top_k: int = None) -> List[dict]:
+    async def search(
+        self,
+        query: str,
+        department_ids: List[int],
+        top_k: int = None,
+        db: Optional[AsyncSession] = None,
+    ) -> List[dict]:
         k = top_k or settings.TOP_K
         query_vector = embedding_service.embed_query(query)
 
         if _pgvector_available:
-            try:
-                return self._pgvector_search(query_vector, department_ids, k)
-            except Exception as e:
-                logger.warning(f"PGVector search failed, falling back to local: {e}")
+            if db is not None:
+                try:
+                    return await self._async_pgvector_search(db, query_vector, department_ids, k)
+                except Exception as e:
+                    logger.warning(f"Async PGVector search failed: {e}")
+            else:
+                try:
+                    return self._sync_pgvector_search(query_vector, department_ids, k)
+                except Exception as e:
+                    logger.warning(f"Sync PGVector search failed, falling back to local: {e}")
 
         return self._local_search(query_vector, department_ids, k)
 
@@ -58,44 +111,28 @@ class Retriever:
         results.sort(key=lambda x: x["score"], reverse=True)
         return results[:top_k]
 
-    def _pgvector_search(self, query_vector: List[float], department_ids: List[int], top_k: int) -> List[dict]:
-        from sqlalchemy import create_engine, text
+    def _sync_pgvector_search(self, query_vector: List[float], department_ids: List[int], top_k: int) -> List[dict]:
         engine = create_engine(settings.DATABASE_URL_SYNC)
-        vector_str = "[" + ",".join(str(v) for v in query_vector) + "]"
-
-        dept_filter = ""
-        if department_ids:
-            ids = ",".join(str(d) for d in department_ids)
-            dept_filter = f"AND d.department_id IN ({ids})"
-
-        sql = text(f"""
-            SELECT c.id, c.text, c.metadata, c.chunk_index, c.document_id,
-                   1 - (c.embedding <=> '{vector_str}'::vector) as score,
-                   d.filename as original_filename
-            FROM chunks c
-            JOIN documents d ON d.id = c.document_id
-            WHERE c.embedding IS NOT NULL
-              AND 1 - (c.embedding <=> '{vector_str}'::vector) >= {settings.SIMILARITY_THRESHOLD}
-            {dept_filter}
-            ORDER BY score DESC
-            LIMIT {top_k}
-        """)
+        vector_str = _build_vector_str(query_vector)
+        sql = _build_search_query(vector_str, department_ids, top_k)
 
         with engine.connect() as conn:
             rows = conn.execute(sql).fetchall()
 
-        results = []
-        for row in rows:
-            score = float(row.score) if row.score is not None else 0.0
-            results.append({
-                "document_id": row.document_id,
-                "filename": row.original_filename,
-                "chunk_index": row.chunk_index,
-                "text": row.text,
-                "metadata": row.metadata,
-                "score": score,
-            })
-        return results
+        return _rows_to_results(rows)
+
+    async def _async_pgvector_search(
+        self,
+        db: AsyncSession,
+        query_vector: List[float],
+        department_ids: List[int],
+        top_k: int,
+    ) -> List[dict]:
+        vector_str = _build_vector_str(query_vector)
+        sql = _build_search_query(vector_str, department_ids, top_k)
+        result = await db.execute(sql)
+        rows = result.fetchall()
+        return _rows_to_results(rows)
 
     def store_chunks(self, document_id: int, chunks: List[dict], filename: str, department_id: int):
         texts = [c["text"] for c in chunks]
@@ -121,12 +158,11 @@ class Retriever:
                 logger.warning(f"PGVector store failed: {e}")
 
     def _pgvector_store(self, document_id: int, chunks: List[dict], embeddings: List[List[float]], filename: str, department_id: int):
-        from sqlalchemy import create_engine, text
         engine = create_engine(settings.DATABASE_URL_SYNC)
         with engine.connect() as conn:
             for i, chunk in enumerate(chunks):
-                vec_str = "[" + ",".join(str(v) for v in embeddings[i]) + "]"
-                sql = text(f"""
+                vec_str = _build_vector_str(embeddings[i])
+                sql = sa_text(f"""
                     UPDATE chunks SET embedding = '{vec_str}'::vector
                     WHERE id = {chunk['chunk_id']}
                 """)

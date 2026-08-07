@@ -89,3 +89,46 @@ backend/
 
 ## Decision Records
 See `decisions/` directory for Architecture Decision Records (ADRs).
+
+---
+
+## AI Workspace (.ai/)
+
+This project includes a standardized **AI Workspace** at the repository root (`.ai/`) to provide persistent external memory for AI coding assistants. To maintain context across sessions, **read the following on every new session start**:
+
+### Session Start Protocol
+1. **Read** `.ai/docs/00_PROJECT.md` — project identity, vision, and scope
+2. **Read** `.ai/current_state.md` — current operational state and completion
+3. **Read** `.ai/roadmap/03_ROADMAP.md` — current phase and upcoming deliverables
+4. **Read** `.ai/docs/11_CONTEXT.md` — quick context summary for LLM injection
+
+### Reference Files (read as needed)
+- `.ai/docs/01_REQUIREMENTS.md` — all functional and non-functional requirements
+- `.ai/docs/02_ARCHITECTURE.md` — system architecture, data flow, scaling plan
+- `.ai/decisions/05_DECISIONS.md` — architecture decision log (ADRs)
+- `.ai/docs/06_TECH_STACK.md` — technology stack specification
+- `.ai/docs/07_FILE_INDEX.md` — file-purpose/dependency index
+- `.ai/docs/08_API.md` — API endpoint reference
+- `.ai/docs/09_DATABASE.md` — database schema and indexes
+- `.ai/prompts/` — AI prompt library (system, chat, eval templates)
+- `.ai/schemas/pydantic_schemas.md` — Pydantic request/response schema reference
+
+### Machine-Readable Files (for automated agent parsing)
+- `.ai/project.yaml` — canonical project metadata
+- `.ai/current_state.yaml` — operational state
+- `.ai/roadmap/roadmap.yaml` — roadmap phases
+- `.ai/decisions/decisions.yaml` — decision log
+- `.ai/tasks/tasks.yaml` — task tracking
+- `.ai/docs/file_map.json` — file index with dependencies
+- `.ai/graphs/dependency_graph.json` — module dependency graph
+- `.ai/graphs/architecture.mmd` — system architecture diagram
+- `.ai/graphs/dependency.mmd` — dependency topology diagram
+- `.ai/graphs/workflow.mmd` — sequence workflow diagram
+
+### Session End Protocol
+Before ending a session, update:
+1. `.ai/current_state.md` — refresh completion percentage and next tasks
+2. `.ai/tasks/todo.md` / `doing.md` / `done.md` — move completed tasks
+3. `.ai/tasks/changelog/YYYY-MM-DD.md` — log completed work, files changed, problems, solutions
+4. `.ai/decisions/05_DECISIONS.md` — add any new architectural decisions
+5. `.ai/current_state.yaml` — update machine-readable state

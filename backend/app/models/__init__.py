@@ -6,6 +6,7 @@ from app.models.chunk import Chunk
 from app.models.chat_session import ChatSession
 from app.models.message import Message
 from app.models.audit_log import AuditLog
+from app.models.blacklisted_token import BlacklistedToken
 
 __all__ = [
     "User",
@@ -16,4 +17,5 @@ __all__ = [
     "ChatSession",
     "Message",
     "AuditLog",
+    "BlacklistedToken",
 ]

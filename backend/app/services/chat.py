@@ -29,7 +29,7 @@ class ChatService:
             session = await self.session_repo.create(user_id=user_id, title=question[:100])
 
         search_start = time.time()
-        documents = self.retriever.search(question, department_ids)
+        documents = await self.retriever.search(question, department_ids, db=self.db)
         search_time = (time.time() - search_start) * 1000
         SEARCH_LATENCY.observe(search_time)
 
@@ -77,7 +77,7 @@ class ChatService:
 
     async def search(self, query: str, department_ids: list[int], top_k: int = 5) -> list[dict]:
         search_start = time.time()
-        results = self.retriever.search(query, department_ids, top_k)
+        results = await self.retriever.search(query, department_ids, top_k, db=self.db)
         search_time = (time.time() - search_start) * 1000
         SEARCH_LATENCY.observe(search_time)
         return results

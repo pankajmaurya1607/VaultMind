@@ -41,3 +41,6 @@ logs/
 
 # Docker
 *.pid
+
+# AI Workspace — runtime / generated artifacts (DO NOT COMMIT)
+.ai/

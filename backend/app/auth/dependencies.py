@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from app.db.session import get_db
 from app.auth.jwt import decode_token
+from app.repositories.auth import AuthRepository
 from app.models.user import User
 from app.models.role import Role
 from app.models.department import Department
@@ -26,6 +27,16 @@ async def get_current_user(
     user_id = payload.get("sub")
     if user_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+
+    jti = payload.get("jti")
+    if jti:
+        auth_repo = AuthRepository(db)
+        if await auth_repo.is_blacklisted(jti):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
     result = await db.execute(
         select(User)
