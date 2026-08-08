@@ -8,13 +8,22 @@ interface UploadModalProps {
   onClose: () => void
 }
 
+function extractError(err: unknown): string {
+  if (err instanceof Error) {
+    const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+    return detail || err.message
+  }
+  return "Upload failed"
+}
+
 export default function UploadModal({ open, onClose }: UploadModalProps) {
   const [file, setFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
+  const [validationError, setValidationError] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
   const upload = useUploadDocument()
 
-  const reset = () => { setFile(null); upload.reset() }
+  const reset = () => { setFile(null); setValidationError(""); upload.reset() }
 
   const validate = (f: File) => {
     const ext = "." + f.name.split(".").pop()?.toLowerCase()
@@ -25,9 +34,14 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
 
   const handleFile = useCallback((f: File) => {
     const err = validate(f)
-    if (err) { upload.reset(); return }
+    if (err) {
+      setFile(null)
+      setValidationError(err)
+      return
+    }
+    setValidationError("")
     setFile(f)
-  }, [upload])
+  }, [])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -43,6 +57,7 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
 
   const handleUpload = async () => {
     if (!file) return
+    setValidationError("")
     try {
       await upload.mutateAsync(file)
       reset()
@@ -87,9 +102,15 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
             <p className="text-xs text-text-dim mt-1">PDF, DOCX, MD, CSV, XLSX, TXT &middot; Max 10 MB</p>
           </div>
 
+          {validationError && (
+            <div className="bg-error/10 border border-error/30 text-error text-sm rounded-lg px-4 py-2.5 animate-fade-in">
+              {validationError}
+            </div>
+          )}
+
           {upload.error && (
-            <div className="bg-error/10 border border-error/30 text-error text-sm rounded-lg px-4 py-2.5">
-              {upload.error instanceof Error ? upload.error.message : "Upload failed"}
+            <div className="bg-error/10 border border-error/30 text-error text-sm rounded-lg px-4 py-2.5 animate-fade-in">
+              {extractError(upload.error)}
             </div>
           )}
 

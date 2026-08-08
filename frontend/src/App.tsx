@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { AuthProvider, useAuth } from "./context/AuthContext"
+import { AuthProvider, useAuth, isAdmin } from "./context/AuthContext"
 import { ToastProvider } from "./components/ui/Toast"
+import ErrorBoundary from "./components/ui/ErrorBoundary"
 import AppLayout from "./components/layout/AppLayout"
 import LoginPage from "./pages/LoginPage"
 import RegisterPage from "./pages/RegisterPage"
@@ -23,24 +24,28 @@ const queryClient = new QueryClient({
   },
 })
 
+function LoadingScreen() {
+  return <div className="flex items-center justify-center min-h-screen text-text-muted">Loading...</div>
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
-  if (loading) return <div className="flex items-center justify-center min-h-screen text-text-muted">Loading...</div>
+  if (loading) return <LoadingScreen />
   if (!user) return <Navigate to="/login" replace />
   return <AppLayout>{children}</AppLayout>
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
-  if (loading) return <div className="flex items-center justify-center min-h-screen text-text-muted">Loading...</div>
+  if (loading) return <LoadingScreen />
   if (!user) return <Navigate to="/login" replace />
-  if (user.role_id !== 1) return <Navigate to="/dashboard" replace />
+  if (!isAdmin(user)) return <Navigate to="/dashboard" replace />
   return <AppLayout>{children}</AppLayout>
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
-  if (loading) return <div className="flex items-center justify-center min-h-screen text-text-muted">Loading...</div>
+  if (loading) return <LoadingScreen />
   if (user) return <Navigate to="/dashboard" replace />
   return <>{children}</>
 }
@@ -48,7 +53,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
@@ -65,14 +70,16 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <ToastProvider>
-            <AppRoutes />
-          </ToastProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AuthProvider>
+            <ToastProvider>
+              <AppRoutes />
+            </ToastProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   )
 }

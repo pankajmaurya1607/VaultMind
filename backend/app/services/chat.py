@@ -4,7 +4,7 @@ import time
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.chat_session import ChatSession
-from app.monitoring.metrics import CHAT_LATENCY, LLM_LATENCY, SEARCH_LATENCY
+from app.monitoring.metrics import CHAT_LATENCY, LLM_LATENCY, record_search_latency
 from app.rag.llm.generator import Generator
 from app.rag.retriever.retriever import Retriever
 from app.repositories.chat import ChatSessionRepository, MessageRepository
@@ -33,7 +33,7 @@ class ChatService:
         search_start = time.time()
         documents = await self.retriever.search(question, department_ids, db=self.db)
         search_time = (time.time() - search_start) * 1000
-        SEARCH_LATENCY.observe(search_time)
+        record_search_latency(search_time)
 
         llm_start = time.time()
         answer, sources, confidence = self.generator.generate(question, documents)
@@ -81,7 +81,7 @@ class ChatService:
         search_start = time.time()
         results = await self.retriever.search(query, department_ids, top_k, db=self.db)
         search_time = (time.time() - search_start) * 1000
-        SEARCH_LATENCY.observe(search_time)
+        record_search_latency(search_time)
         return results
 
     async def get_history(self, user_id: int) -> list[ChatSession]:

@@ -24,14 +24,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     api
       .get<User>("/users/me")
-      .then((res) => {
-        setUser(res.data)
-        localStorage.setItem("user", JSON.stringify(res.data))
-      })
+      .then((res) => setUser(res.data))
       .catch(() => {
         localStorage.removeItem("access_token")
         localStorage.removeItem("refresh_token")
-        localStorage.removeItem("user")
       })
       .finally(() => setLoading(false))
   }, [])
@@ -42,7 +38,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("refresh_token", data.refresh_token)
     const userRes = await api.get<User>("/users/me")
     setUser(userRes.data)
-    localStorage.setItem("user", JSON.stringify(userRes.data))
   }
 
   const register = async (body: RegisterBody) => {
@@ -51,7 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("refresh_token", data.refresh_token)
     const userRes = await api.get<User>("/users/me")
     setUser(userRes.data)
-    localStorage.setItem("user", JSON.stringify(userRes.data))
   }
 
   const logout = async () => {
@@ -67,7 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
-    localStorage.removeItem("user")
     setUser(null)
   }
 
@@ -82,4 +75,8 @@ export function useAuth() {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error("useAuth must be used within AuthProvider")
   return ctx
+}
+
+export function isAdmin(user: User | null) {
+  return user?.role_name === "Admin"
 }

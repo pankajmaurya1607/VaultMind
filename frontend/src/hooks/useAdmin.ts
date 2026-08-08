@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../lib/api"
 import type { User, AuditLog, SystemMetrics } from "../types"
 
@@ -9,6 +9,20 @@ export function useAdminUsers() {
       const { data } = await api.get("/users")
       return data
     },
+  })
+}
+
+export function useUpdateUser() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, role_id, department_id }: { id: number; role_id?: number; department_id?: number | null }) => {
+      const { data } = await api.patch(`/users/${id}`, {
+        role_id,
+        department_id,
+      })
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin", "users"] }),
   })
 }
 

@@ -1,24 +1,21 @@
 import { NavLink } from "react-router-dom"
-import { useAuth } from "../../context/AuthContext"
+import { useAuth, isAdmin } from "../../context/AuthContext"
 
 const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: "◈", adminOnly: false },
-  { to: "/documents", label: "Documents", icon: "◇", adminOnly: false },
-  { to: "/search", label: "Search", icon: "◎", adminOnly: false },
-  { to: "/chat", label: "Chat", icon: "◉", adminOnly: false },
+  { to: "/dashboard", label: "Dashboard", icon: "◈" },
+  { to: "/documents", label: "Documents", icon: "◇" },
+  { to: "/search", label: "Search", icon: "◎" },
+  { to: "/chat", label: "Chat", icon: "◉" },
 ]
 
 const adminItems = [
-  { to: "/admin/users", label: "Users", icon: "◆", adminOnly: true },
-  { to: "/admin/audit", label: "Audit Log", icon: "◈", adminOnly: true },
-  { to: "/admin/metrics", label: "Metrics", icon: "◉", adminOnly: true },
+  { to: "/admin/users", label: "Users", icon: "◆" },
+  { to: "/admin/audit", label: "Audit Log", icon: "◈" },
+  { to: "/admin/metrics", label: "Metrics", icon: "◉" },
 ]
 
 export default function Sidebar() {
   const { user, logout } = useAuth()
-
-  const roleLabel =
-    user?.role_id === 1 ? "Admin" : user?.role_id === 2 ? "Manager" : "Employee"
 
   return (
     <aside className="w-56 h-screen bg-bg-surface border-r border-border flex flex-col flex-shrink-0">
@@ -45,7 +42,7 @@ export default function Sidebar() {
           </NavLink>
         ))}
 
-        {user?.role_id === 1 && (
+        {isAdmin(user) && (
           <>
             <div className="pt-4 pb-1">
               <p className="px-3 text-xs font-medium text-text-dim uppercase tracking-wider">Admin</p>
@@ -77,7 +74,7 @@ export default function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-text truncate">{user?.name}</p>
-            <p className="text-xs text-text-muted">{roleLabel}</p>
+            <p className="text-xs text-text-muted">{user?.role_name || "User"}</p>
           </div>
           <button
             onClick={logout}

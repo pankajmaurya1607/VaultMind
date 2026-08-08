@@ -31,3 +31,18 @@ QUEUE_SIZE = Gauge("celery_queue_size", "Celery task queue size")
 ACTIVE_USERS = Gauge("active_users", "Number of active users")
 DOCUMENTS_TOTAL = Gauge("documents_total", "Total number of documents", ["status"])
 TOKENS_USED = Counter("tokens_used_total", "Total tokens used", ["model"])
+
+_search_latency = {"sum_ms": 0.0, "count": 0}
+
+
+def record_search_latency(latency_ms: float) -> None:
+    SEARCH_LATENCY.observe(latency_ms)
+    _search_latency["sum_ms"] += latency_ms
+    _search_latency["count"] += 1
+
+
+def search_latency_stats() -> tuple[float, int]:
+    count = _search_latency["count"]
+    if count == 0:
+        return 0.0, 0
+    return round(_search_latency["sum_ms"] / count, 2), count

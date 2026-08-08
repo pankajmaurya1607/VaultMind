@@ -1,20 +1,41 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../lib/api"
-import type { Document } from "../types"
+import type { Document, DocumentUploadResponse } from "../types"
 
-export function useDocuments() {
+export function useDocuments(refetchMs?: number) {
   return useQuery<Document[]>({
     queryKey: ["documents"],
     queryFn: async () => {
       const { data } = await api.get("/documents")
       return data
     },
+    refetchInterval: (query) => {
+      if (refetchMs == null) return false
+      const docs = query.state.data
+      const pending = docs?.some((d) => d.status === "pending" || d.status === "processing")
+      return pending ? refetchMs : false
+    },
+  })
+}
+
+export function useDocument(id: number | null) {
+  return useQuery<Document>({
+    queryKey: ["documents", id],
+    queryFn: async () => {
+      const { data } = await api.get(`/documents/${id}`)
+      return data
+    },
+    enabled: id != null,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      return status === "pending" || status === "processing" ? 5000 : false
+    },
   })
 }
 
 export function useUploadDocument() {
   const qc = useQueryClient()
-  return useMutation({
+  return useMutation<DocumentUploadResponse, Error, File>({
     mutationFn: async (file: File) => {
       const form = new FormData()
       form.append("file", file)

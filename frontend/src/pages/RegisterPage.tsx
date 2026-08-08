@@ -1,25 +1,18 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
+import { useDepartments } from "../hooks/useReferences"
 import type { RegisterBody } from "../types"
-
-const DEPARTMENTS = [
-  { id: 1, name: "Finance" },
-  { id: 2, name: "HR" },
-  { id: 3, name: "Engineering" },
-  { id: 4, name: "Sales" },
-  { id: 5, name: "Marketing" },
-]
 
 export default function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
+  const { data: departments, isLoading: departmentsLoading } = useDepartments()
   const [form, setForm] = useState<RegisterBody>({
     name: "",
     email: "",
     password: "",
-    department_id: 3,
-    role_id: 3,
+    department_id: 1,
   })
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -123,11 +116,15 @@ export default function RegisterPage() {
               onChange={(e) => setForm({ ...form, department_id: Number(e.target.value) })}
               className="w-full bg-bg-base border border-border rounded-lg px-3.5 py-2.5 text-text text-sm focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-colors appearance-none cursor-pointer"
             >
-              {DEPARTMENTS.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
+              {departmentsLoading ? (
+                <option>Loading departments...</option>
+              ) : (
+                (departments || []).map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 

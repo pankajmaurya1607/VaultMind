@@ -77,7 +77,7 @@ export default function SearchPage() {
         </div>
       )}
 
-      {data && data.total === 0 && (
+      {data && data.total === 0 && !isFetching && (
         <div className="text-sm text-text-muted py-12 text-center">
           No results found for "{query}".
         </div>
@@ -87,6 +87,7 @@ export default function SearchPage() {
         <div className="space-y-1">
           <p className="text-xs text-text-dim mb-3">
             {data.total} result{data.total !== 1 ? "s" : ""} for "{query}"
+            {isFetching && " (refreshing...)"}
           </p>
           {data.results.map((r, i) => {
             const isExpanded = expanded.has(i) || r.text.length < 300

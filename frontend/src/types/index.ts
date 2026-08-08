@@ -2,10 +2,10 @@ export interface User {
   id: number
   name: string
   email: string
-  department_id: number
-  department_name: string
+  department_id: number | null
+  department_name: string | null
   role_id: number
-  role_name: string
+  role_name: string | null
   created_at: string
 }
 
@@ -16,18 +16,28 @@ export interface Document {
   mime_type: string
   status: "pending" | "processing" | "ready" | "failed"
   uploaded_by: number
-  department_id: number
+  department_id: number | null
   chunk_count: number
   error_message: string | null
   created_at: string
 }
 
-export interface Chunk {
+export interface DocumentUploadResponse {
+  id: number
+  filename: string
+  status: Document["status"]
+  message?: string
+}
+
+export interface Source {
   document_id: number
   filename: string
   chunk_index: number
   text: string
   score: number
+}
+
+export interface Chunk extends Source {
   metadata: Record<string, unknown>
 }
 
@@ -35,14 +45,14 @@ export interface ChatSession {
   id: number
   title: string
   created_at: string
-  message_count?: number
+  message_count: number
 }
 
 export interface Message {
   id: number
   role: "user" | "assistant"
   content: string
-  sources: Chunk[] | null
+  sources: Source[] | null
   confidence_score: number | null
   created_at: string
 }
@@ -50,7 +60,7 @@ export interface Message {
 export interface ChatResponse {
   session_id: number
   answer: string
-  sources: Chunk[]
+  sources: Source[]
   confidence_score: number
   tokens_used: number
   latency_ms: number
@@ -89,7 +99,6 @@ export interface RegisterBody {
   email: string
   password: string
   department_id: number
-  role_id?: number
 }
 
 export interface LoginBody {
@@ -112,7 +121,13 @@ export interface ChatBody {
   question: string
 }
 
-export interface Department {
+export interface Label {
   id: number
   name: string
+}
+
+export interface UserUpdate {
+  name?: string
+  department_id?: number
+  role_id?: number
 }
