@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import get_db
-from app.schemas.user import UserResponse, UserUpdate
-from app.models.user import User
+
 from app.auth.dependencies import get_current_user
+from app.db.session import get_db
+from app.models.user import User
 from app.rbac.dependencies import require_admin
 from app.repositories.user import UserRepository
+from app.schemas.user import UserResponse, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -62,6 +63,7 @@ async def update_user(
     user = await repo.update(user_id, **updates)
     if not user:
         from fastapi import HTTPException, status
+
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     user = await repo.get_with_relations(user_id)
     return UserResponse(

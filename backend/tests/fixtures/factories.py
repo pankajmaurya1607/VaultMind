@@ -1,10 +1,11 @@
 import factory
-from app.models.role import Role
-from app.models.department import Department
-from app.models.user import User
-from app.models.document import Document, DocumentStatus
-from app.models.chat_session import ChatSession
+
 from app.auth.jwt import hash_password
+from app.models.chat_session import ChatSession
+from app.models.department import Department
+from app.models.document import Document, DocumentStatus
+from app.models.role import Role
+from app.models.user import User
 
 
 class RoleFactory(factory.Factory):

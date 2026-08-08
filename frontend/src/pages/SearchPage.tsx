@@ -18,7 +18,7 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (initialQ) run(initialQ)
-  }, [])
+  }, [run, initialQ])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.db.session import get_db
-from app.schemas.audit import AuditLogResponse
-from app.schemas.monitoring import SystemMetrics
 from app.models.user import User
-from app.auth.dependencies import get_current_user
 from app.rbac.dependencies import require_admin
 from app.repositories.audit import AuditLogRepository
+from app.schemas.audit import AuditLogResponse
+from app.schemas.monitoring import SystemMetrics
 from app.services.monitoring import MonitoringService
 
 router = APIRouter(prefix="/admin", tags=["Admin"])

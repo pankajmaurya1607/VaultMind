@@ -1,9 +1,9 @@
-import os
 import logging
+import os
 from typing import List
-from app.workers.celery_app import celery_app
-from app.rag.embeddings.embedder import embedding_service
+
 from app.rag.retriever.retriever import retriever
+from app.workers.celery_app import celery_app
 
 logger = logging.getLogger("eka")
 
@@ -13,50 +13,61 @@ def parse_file(file_path: str, mime_type: str) -> str:
 
     if ext == ".pdf":
         from pypdf import PdfReader
+
         reader = PdfReader(file_path)
         return "\n".join(page.extract_text() or "" for page in reader.pages)
 
     elif ext == ".docx":
         from docx import Document
+
         doc = Document(file_path)
         return "\n".join(p.text for p in doc.paragraphs)
 
     elif ext == ".md":
-        with open(file_path, "r", encoding="utf-8") as f:
-            return f.read()
+        with open(file_path, "rb") as f:
+            return f.read().decode("utf-8")
 
     elif ext == ".csv":
         import pandas as pd
+
         df = pd.read_csv(file_path)
         return df.to_string()
 
     elif ext == ".xlsx":
         import pandas as pd
+
         df = pd.read_excel(file_path)
         return df.to_string()
 
     elif ext == ".txt":
-        with open(file_path, "r", encoding="utf-8") as f:
-            return f.read()
+        with open(file_path, "rb") as f:
+            return f.read().decode("utf-8")
 
     return ""
 
 
 def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> List[str]:
+    if not text or chunk_size <= 0:
+        return []
+    overlap = min(overlap, chunk_size - 1) if chunk_size > 1 else 0
     chunks = []
     start = 0
-    while start < len(text):
-        end = start + chunk_size
-        if end >= len(text):
-            chunks.append(text[start:])
+    n = len(text)
+    while start < n:
+        end = min(start + chunk_size, n)
+        if end < n:
+            space = text.rfind(" ", start, end)
+            if space > start + chunk_size // 2:
+                end = space
+        chunk = text[start:end].strip()
+        if chunk:
+            chunks.append(chunk)
+        if end >= n:
             break
-        chunk = text[start:end]
-        last_space = chunk.rfind(" ")
-        if last_space > chunk_size // 2:
-            end = start + last_space
-            chunk = text[start:end]
-        chunks.append(chunk)
-        start = end - overlap
+        next_start = end - overlap
+        if next_start <= start:
+            next_start = start + 1
+        start = next_start
     return chunks
 
 
@@ -64,6 +75,7 @@ def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> List[st
 def process_document_task(self, document_id: int):
     from sqlalchemy import create_engine
     from sqlalchemy.orm import Session
+
     from app.config.settings import settings
 
     engine = create_engine(settings.DATABASE_URL_SYNC)
@@ -105,15 +117,17 @@ def process_document_task(self, document_id: int):
                 )
                 db.add(chunk)
                 db.flush()
-                chunk_objects.append({
-                    "chunk_id": chunk.id,
-                    "chunk_index": chunk.chunk_index,
-                    "text": chunk.text,
-                    "metadata": {
-                        "filename": doc.original_filename,
-                        "department_id": doc.department_id,
-                    },
-                })
+                chunk_objects.append(
+                    {
+                        "chunk_id": chunk.id,
+                        "chunk_index": chunk.chunk_index,
+                        "text": chunk.text,
+                        "metadata": {
+                            "filename": doc.original_filename,
+                            "department_id": doc.department_id,
+                        },
+                    }
+                )
 
             db.commit()
 
@@ -135,6 +149,7 @@ def process_document_task(self, document_id: int):
         try:
             with Session(engine) as db:
                 from app.models.document import Document, DocumentStatus
+
                 doc = db.query(Document).filter(Document.id == document_id).first()
                 if doc:
                     doc.status = DocumentStatus.FAILED

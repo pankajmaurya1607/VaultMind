@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import get_db
-from app.schemas.chat import ChatRequest, ChatResponse, Source, ChatHistoryResponse, MessageResponse
-from app.models.user import User
+
 from app.auth.dependencies import get_current_user
+from app.db.session import get_db
+from app.models.user import User
 from app.rbac.dependencies import get_effective_department_ids
+from app.schemas.chat import ChatHistoryResponse, ChatRequest, ChatResponse, MessageResponse, Source
 from app.services.chat import ChatService
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -41,7 +42,7 @@ async def chat_history(
             id=s.id,
             title=s.title,
             created_at=s.created_at,
-            message_count=len(s.messages) if hasattr(s, 'messages') and s.messages else 0,
+            message_count=len(s.messages) if hasattr(s, "messages") and s.messages else 0,
         )
         for s in sessions
     ]

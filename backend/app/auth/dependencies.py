@@ -1,14 +1,13 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
-from app.db.session import get_db
+
 from app.auth.jwt import decode_token
-from app.repositories.auth import AuthRepository
+from app.db.session import get_db
 from app.models.user import User
-from app.models.role import Role
-from app.models.department import Department
+from app.repositories.auth import AuthRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -39,9 +38,7 @@ async def get_current_user(
             )
 
     result = await db.execute(
-        select(User)
-        .options(joinedload(User.role), joinedload(User.department))
-        .where(User.id == int(user_id))
+        select(User).options(joinedload(User.role), joinedload(User.department)).where(User.id == int(user_id))
     )
     user = result.scalar_one_or_none()
     if user is None:

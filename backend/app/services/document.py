@@ -1,10 +1,12 @@
 import os
 import uuid
-from fastapi import UploadFile, HTTPException, status
+
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.config.settings import settings
-from app.repositories.document import DocumentRepository
 from app.models.document import Document, DocumentStatus
+from app.repositories.document import DocumentRepository
 from app.tasks.process import process_document_task
 
 
@@ -21,7 +23,7 @@ class DocumentService:
         content = await file.read()
         if len(content) > settings.MAX_UPLOAD_SIZE:
             raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 detail=f"File exceeds max size of {settings.MAX_UPLOAD_SIZE} bytes",
             )
 

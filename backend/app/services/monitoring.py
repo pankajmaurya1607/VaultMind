@@ -1,9 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.repositories.document import DocumentRepository
-from app.repositories.chat import MessageRepository
+
 from app.repositories.audit import AuditLogRepository
+from app.repositories.chat import MessageRepository
+from app.repositories.document import DocumentRepository
 from app.repositories.user import UserRepository
-from app.models.document import Document
 
 
 class MonitoringService:

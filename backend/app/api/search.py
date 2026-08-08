@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import get_db
-from app.schemas.chat import SearchRequest, SearchResponse, SearchResult
-from app.models.user import User
+
 from app.auth.dependencies import get_current_user
+from app.db.session import get_db
+from app.models.user import User
 from app.rbac.dependencies import get_effective_department_ids
+from app.schemas.chat import SearchRequest, SearchResponse, SearchResult
 from app.services.chat import ChatService
 
 router = APIRouter(prefix="/search", tags=["Search"])

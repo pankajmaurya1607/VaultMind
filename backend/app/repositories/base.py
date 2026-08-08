@@ -1,6 +1,8 @@
-from typing import TypeVar, Generic, Type, Optional, List
+from typing import Generic, List, Optional, Type, TypeVar
+
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+
 from app.db.session import Base
 
 ModelType = TypeVar("ModelType", bound=Base)

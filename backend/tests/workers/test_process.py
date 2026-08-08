@@ -1,6 +1,6 @@
-import pytest
-from unittest.mock import patch, MagicMock, mock_open
-from app.tasks.process import parse_file, chunk_text
+from unittest.mock import mock_open, patch
+
+from app.tasks.process import chunk_text, parse_file
 
 
 def test_parse_txt():
@@ -31,11 +31,12 @@ def test_chunk_text_small():
 
 
 def test_chunk_text_overlap():
-    text = "one two three four five six seven eight nine ten"
-    chunks = chunk_text(text, chunk_size=5, overlap=2)
+    text = (
+        "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor "
+        "incididunt ut labore et dolore magna aliqua. "
+    ) * 4
+    chunks = chunk_text(text, chunk_size=50, overlap=20)
     assert len(chunks) >= 2
-    if len(chunks) >= 2:
-        first_words = chunks[0].split()
-        second_words = chunks[1].split()
-        overlap_words = set(first_words) & set(second_words)
-        assert len(overlap_words) > 0
+    for prev, curr in zip(chunks, chunks[1:]):
+        shared = set(prev.split()) & set(curr.split())
+        assert len(shared) > 0

@@ -1,7 +1,10 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, func, Enum as SAEnum
-from sqlalchemy.orm import relationship
-from app.db.session import Base
 import enum
+
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy.orm import relationship
+
+from app.db.session import Base
 
 
 class DocumentStatus(str, enum.Enum):

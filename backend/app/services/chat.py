@@ -1,12 +1,14 @@
+import logging
+import time
+
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.chat_session import ChatSession
+from app.monitoring.metrics import CHAT_LATENCY, LLM_LATENCY, SEARCH_LATENCY
+from app.rag.llm.generator import Generator
+from app.rag.retriever.retriever import Retriever
 from app.repositories.chat import ChatSessionRepository, MessageRepository
 from app.repositories.document import DocumentRepository
-from app.models.chat_session import ChatSession
-from app.rag.retriever.retriever import Retriever
-from app.rag.llm.generator import Generator
-from app.monitoring.metrics import CHAT_LATENCY, LLM_LATENCY, SEARCH_LATENCY
-import time
-import logging
 
 logger = logging.getLogger("eka")
 
@@ -56,7 +58,7 @@ class ChatService:
             content=question,
         )
 
-        msg = await self.message_repo.create(
+        await self.message_repo.create(
             session_id=session.id,
             role="assistant",
             content=answer,

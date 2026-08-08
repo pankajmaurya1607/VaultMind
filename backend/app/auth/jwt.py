@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import uuid4
-from jose import JWTError, jwt
+
 import bcrypt
+from jose import JWTError, jwt
+
 from app.config.settings import settings
 
 

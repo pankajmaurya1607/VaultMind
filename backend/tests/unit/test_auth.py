@@ -1,5 +1,4 @@
-import pytest
-from app.auth.jwt import hash_password, verify_password, create_access_token, create_refresh_token, decode_token
+from app.auth.jwt import create_access_token, create_refresh_token, decode_token, hash_password, verify_password
 
 
 class TestPasswordHashing:
@@ -28,8 +27,10 @@ class TestJWT:
 
     def test_expired_token(self):
         from datetime import timedelta
+
         token = create_access_token({"sub": "1"}, expires_delta=timedelta(seconds=-1))
         import time
+
         time.sleep(1)
         payload = decode_token(token)
         assert payload is None

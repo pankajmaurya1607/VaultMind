@@ -1,7 +1,8 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, func, JSON
-from sqlalchemy.orm import relationship
-from app.db.session import Base
 from pgvector.sqlalchemy import Vector
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy.orm import relationship
+
+from app.db.session import Base
 
 
 class Chunk(Base):

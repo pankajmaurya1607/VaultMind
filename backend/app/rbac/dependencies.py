@@ -1,8 +1,9 @@
-from fastapi import Depends, HTTPException, status
-from functools import wraps
 from typing import List
-from app.models.user import User
+
+from fastapi import Depends, HTTPException, status
+
 from app.auth.dependencies import get_current_user
+from app.models.user import User
 
 
 class RoleChecker:

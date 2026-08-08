@@ -1,8 +1,9 @@
-from sqlalchemy import select, func, desc
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import joinedload
-from app.repositories.base import BaseRepository
+
 from app.models.chat_session import ChatSession
 from app.models.message import Message
+from app.repositories.base import BaseRepository
 
 
 class ChatSessionRepository(BaseRepository[ChatSession]):
@@ -15,15 +16,14 @@ class ChatSessionRepository(BaseRepository[ChatSession]):
             .where(ChatSession.user_id == user_id)
             .options(joinedload(ChatSession.messages))
             .order_by(desc(ChatSession.updated_at))
-            .offset(skip).limit(limit)
+            .offset(skip)
+            .limit(limit)
         )
         return list(result.unique().scalars().all())
 
     async def get_with_messages(self, id: int) -> ChatSession | None:
         result = await self.db.execute(
-            select(ChatSession)
-            .options(joinedload(ChatSession.messages))
-            .where(ChatSession.id == id)
+            select(ChatSession).options(joinedload(ChatSession.messages)).where(ChatSession.id == id)
         )
         return result.scalar_one_or_none()
 

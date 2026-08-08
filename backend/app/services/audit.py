@@ -1,6 +1,7 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.repositories.audit import AuditLogRepository
 from fastapi import Request
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.repositories.audit import AuditLogRepository
 
 
 class AuditService:
@@ -37,7 +38,9 @@ class AuditService:
         return request.client.host if request.client else "unknown"
 
 
-async def log_request(request: Request, db: AsyncSession, user_id: int | None, action: str, resource: str, success: bool = True):
+async def log_request(
+    request: Request, db: AsyncSession, user_id: int | None, action: str, resource: str, success: bool = True
+):
     audit = AuditService(db)
     await audit.log(
         user_id=user_id,

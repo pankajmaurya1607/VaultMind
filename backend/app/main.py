@@ -1,14 +1,18 @@
 import logging
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
-from app.config.settings import settings
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
 from app.api.router import api_router
+from app.config.settings import settings
+from app.core.exceptions import global_exception_handler, http_exception_handler, validation_exception_handler
+from app.db.session import Base, engine
 from app.mid.logging import LoggingMiddleware
 from app.mid.rate_limit import RateLimitMiddleware
-from app.core.exceptions import global_exception_handler, http_exception_handler, validation_exception_handler
-from app.db.session import engine, Base
 
 logging.basicConfig(level=logging.INFO if not settings.DEBUG else logging.DEBUG)
 logger = logging.getLogger("eka")
@@ -41,9 +45,6 @@ app.add_middleware(
 )
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(RateLimitMiddleware)
-
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from fastapi.exceptions import RequestValidationError
 
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)

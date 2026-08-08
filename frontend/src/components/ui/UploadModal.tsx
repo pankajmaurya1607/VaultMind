@@ -27,7 +27,7 @@ export default function UploadModal({ open, onClose }: UploadModalProps) {
     const err = validate(f)
     if (err) { upload.reset(); return }
     setFile(f)
-  }, [])
+  }, [upload])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()

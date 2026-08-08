@@ -2,18 +2,21 @@
 
 Usage: python seed_data.py
 """
+
 import os
 import sys
+
 sys.path.insert(0, os.path.dirname(__file__))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+
+from app.auth.jwt import hash_password
 from app.config.settings import settings
 from app.db.session import Base
-from app.models.role import Role
 from app.models.department import Department
+from app.models.role import Role
 from app.models.user import User
-from app.auth.jwt import hash_password
 
 
 def seed():

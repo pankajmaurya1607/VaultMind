@@ -1,18 +1,19 @@
-import os
-import json
 import logging
+import os
 from typing import List, Optional
+
 import numpy as np
+
 from app.config.settings import settings
 from app.rag.embeddings.embedder import embedding_service
 
 logger = logging.getLogger("eka")
 
 try:
-    import pgvector
+    from sqlalchemy import create_engine
     from sqlalchemy import text as sa_text
     from sqlalchemy.ext.asyncio import AsyncSession
-    from sqlalchemy import create_engine
+
     _pgvector_available = True
 except Exception:
     _pgvector_available = False
@@ -46,14 +47,16 @@ def _rows_to_results(rows) -> List[dict]:
     results = []
     for row in rows:
         score = float(row.score) if row.score is not None else 0.0
-        results.append({
-            "document_id": row.document_id,
-            "filename": row.original_filename,
-            "chunk_index": row.chunk_index,
-            "text": row.text,
-            "metadata": row.metadata,
-            "score": score,
-        })
+        results.append(
+            {
+                "document_id": row.document_id,
+                "filename": row.original_filename,
+                "chunk_index": row.chunk_index,
+                "text": row.text,
+                "metadata": row.metadata,
+                "score": score,
+            }
+        )
     return results
 
 
@@ -99,14 +102,16 @@ class Retriever:
                 denom = np.linalg.norm(query_np) * np.linalg.norm(chunk_vec)
                 score = float(np.dot(query_np, chunk_vec) / (denom + 1e-10)) if denom > 0 else 0.0
                 if score >= settings.SIMILARITY_THRESHOLD:
-                    results.append({
-                        "document_id": doc_id,
-                        "filename": chunk.get("filename", ""),
-                        "chunk_index": chunk["chunk_index"],
-                        "text": chunk["text"],
-                        "metadata": chunk.get("metadata", {}),
-                        "score": score,
-                    })
+                    results.append(
+                        {
+                            "document_id": doc_id,
+                            "filename": chunk.get("filename", ""),
+                            "chunk_index": chunk["chunk_index"],
+                            "text": chunk["text"],
+                            "metadata": chunk.get("metadata", {}),
+                            "score": score,
+                        }
+                    )
 
         results.sort(key=lambda x: x["score"], reverse=True)
         return results[:top_k]
@@ -142,14 +147,16 @@ class Retriever:
             doc_id = document_id
             if doc_id not in self._local_store:
                 self._local_store[doc_id] = []
-            self._local_store[doc_id].append({
-                "chunk_index": chunk["chunk_index"],
-                "text": chunk["text"],
-                "metadata": {**chunk["metadata"], "department_id": department_id},
-                "embedding": embeddings[i],
-                "filename": filename,
-                "department_id": department_id,
-            })
+            self._local_store[doc_id].append(
+                {
+                    "chunk_index": chunk["chunk_index"],
+                    "text": chunk["text"],
+                    "metadata": {**chunk["metadata"], "department_id": department_id},
+                    "embedding": embeddings[i],
+                    "filename": filename,
+                    "department_id": department_id,
+                }
+            )
 
         if _pgvector_available:
             try:
@@ -157,14 +164,16 @@ class Retriever:
             except Exception as e:
                 logger.warning(f"PGVector store failed: {e}")
 
-    def _pgvector_store(self, document_id: int, chunks: List[dict], embeddings: List[List[float]], filename: str, department_id: int):
+    def _pgvector_store(
+        self, document_id: int, chunks: List[dict], embeddings: List[List[float]], filename: str, department_id: int
+    ):
         engine = create_engine(settings.DATABASE_URL_SYNC)
         with engine.connect() as conn:
             for i, chunk in enumerate(chunks):
                 vec_str = _build_vector_str(embeddings[i])
                 sql = sa_text(f"""
                     UPDATE chunks SET embedding = '{vec_str}'::vector
-                    WHERE id = {chunk['chunk_id']}
+                    WHERE id = {chunk["chunk_id"]}
                 """)
                 conn.execute(sql)
             conn.commit()

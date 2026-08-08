@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, func
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import relationship
+
 from app.db.session import Base
 
 
@@ -13,4 +14,6 @@ class ChatSession(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     user = relationship("User", back_populates="chat_sessions")
-    messages = relationship("Message", back_populates="session", cascade="all, delete-orphan", order_by="Message.created_at")
+    messages = relationship(
+        "Message", back_populates="session", cascade="all, delete-orphan", order_by="Message.created_at"
+    )

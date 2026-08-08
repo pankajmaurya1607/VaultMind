@@ -1,10 +1,13 @@
 import time
-from fastapi import Request, HTTPException, status
+
+from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
+
 from app.config.settings import settings
 
 try:
     import redis.asyncio as aioredis
+
     _redis_available = True
 except ImportError:
     _redis_available = False
@@ -28,6 +31,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         now = time.time()
         window = 60
         limit = settings.RATE_LIMIT_PER_MINUTE
+
+        if settings.ENVIRONMENT == "testing":
+            return await call_next(request)
+
         key = f"ratelimit:{client_ip}"
 
         redis = await self._get_redis()

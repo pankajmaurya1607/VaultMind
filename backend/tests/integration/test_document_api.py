@@ -3,13 +3,16 @@ from httpx import AsyncClient
 
 
 async def get_auth_token(client: AsyncClient) -> str:
-    resp = await client.post("/api/v1/auth/register", json={
-        "name": "Test User",
-        "email": "doc_test@example.com",
-        "password": "Pass123",
-        "department_id": 1,
-        "role_id": 3,
-    })
+    resp = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "name": "Test User",
+            "email": "doc_test@example.com",
+            "password": "Pass123",
+            "department_id": 1,
+            "role_id": 3,
+        },
+    )
     data = resp.json()
     return data.get("access_token", "")
 

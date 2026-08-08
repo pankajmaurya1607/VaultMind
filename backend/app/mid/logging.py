@@ -1,9 +1,10 @@
-import time
 import logging
-from fastapi import Request, Response
+import time
+
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
+
 from app.monitoring.metrics import REQUEST_COUNT, REQUEST_LATENCY
-from app.services.audit import log_request
 
 logger = logging.getLogger("eka")
 

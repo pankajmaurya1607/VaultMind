@@ -4,10 +4,13 @@ Revision ID: 0001
 Revises:
 Create Date: 2026-07-26 00:00:00.000000
 """
+
 from typing import Sequence, Union
-from alembic import op
+
 import sqlalchemy as sa
 from pgvector.sqlalchemy import Vector
+
+from alembic import op
 
 revision: str = "0001"
 down_revision: Union[str, None] = None
@@ -40,8 +43,14 @@ def upgrade() -> None:
         sa.Column("role_id", sa.Integer(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.Column("updated_at", sa.DateTime(timezone=True), onupdate=sa.func.now()),
-        sa.ForeignKeyConstraint(["department_id"], ["departments.id"], ),
-        sa.ForeignKeyConstraint(["role_id"], ["roles.id"], ),
+        sa.ForeignKeyConstraint(
+            ["department_id"],
+            ["departments.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["role_id"],
+            ["roles.id"],
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_users_email"), "users", ["email"], unique=True)
@@ -57,10 +66,16 @@ def upgrade() -> None:
         sa.Column("department_id", sa.Integer(), nullable=False),
         sa.Column("status", sa.String(), nullable=False),
         sa.Column("chunk_count", sa.Integer(), nullable=True),
-        sa.Column("error_msg", sa.Text(), nullable=True),
+        sa.Column("error_message", sa.String(length=1000), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.ForeignKeyConstraint(["uploaded_by"], ["users.id"], ),
-        sa.ForeignKeyConstraint(["department_id"], ["departments.id"], ),
+        sa.ForeignKeyConstraint(
+            ["uploaded_by"],
+            ["users.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["department_id"],
+            ["departments.id"],
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_documents_department_id"), "documents", ["department_id"])
@@ -70,7 +85,11 @@ def upgrade() -> None:
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("title", sa.String(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"], ),
+        sa.Column("updated_at", sa.DateTime(timezone=True), onupdate=sa.func.now()),
+        sa.ForeignKeyConstraint(
+            ["user_id"],
+            ["users.id"],
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -93,11 +112,14 @@ def upgrade() -> None:
         sa.Column("role", sa.String(), nullable=False),
         sa.Column("content", sa.Text(), nullable=False),
         sa.Column("sources", sa.JSON(), nullable=True),
-        sa.Column("confidence", sa.Float(), nullable=True),
+        sa.Column("confidence_score", sa.Float(), nullable=True),
         sa.Column("tokens_used", sa.Integer(), nullable=True),
         sa.Column("latency_ms", sa.Integer(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.ForeignKeyConstraint(["session_id"], ["chat_sessions.id"], ),
+        sa.ForeignKeyConstraint(
+            ["session_id"],
+            ["chat_sessions.id"],
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -110,7 +132,7 @@ def upgrade() -> None:
         sa.Column("resource_id", sa.String(), nullable=True),
         sa.Column("details", sa.JSON(), nullable=True),
         sa.Column("ip_address", sa.String(), nullable=True),
-        sa.Column("success", sa.Boolean(), nullable=True),
+        sa.Column("success", sa.Integer(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -123,7 +145,10 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_blacklisted_tokens_jti"), "blacklisted_tokens", ["jti"], unique=True)
-    op.execute("CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON chunks USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 200);")
+    op.execute(
+        "CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON chunks USING hnsw (embedding vector_cosine_ops) "
+        "WITH (m = 16, ef_construction = 200);"
+    )
 
 
 def downgrade() -> None:

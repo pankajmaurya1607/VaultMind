@@ -1,11 +1,13 @@
 import logging
 from typing import List
+
 from app.config.settings import settings
 from app.monitoring.metrics import TOKENS_USED
 
 logger = logging.getLogger("eka")
 
-SYSTEM_PROMPT = """You are an enterprise knowledge assistant. Your purpose is to help employees find answers from company documents.
+SYSTEM_PROMPT = """You are an enterprise knowledge assistant. Your purpose is to help employees find answers from
+company documents.
 
 CRITICAL RULES:
 1. Answer ONLY using the provided context documents.
@@ -18,12 +20,14 @@ CRITICAL RULES:
 
 try:
     from langchain_openai import ChatOpenAI
+
     _openai_available = bool(settings.OPENAI_API_KEY)
 except Exception:
     _openai_available = False
 
 try:
     from langchain_groq import ChatGroq
+
     _groq_available = bool(settings.GROQ_API_KEY)
 except Exception:
     _groq_available = False
@@ -64,13 +68,16 @@ class Generator:
             return "I don't have enough information to answer this question.", [], 0.0
 
         context = self._format_context(documents)
-        sources = [{
-            "document_id": d["document_id"],
-            "filename": d["filename"],
-            "chunk_index": d["chunk_index"],
-            "text": d["text"],
-            "score": d["score"],
-        } for d in documents]
+        sources = [
+            {
+                "document_id": d["document_id"],
+                "filename": d["filename"],
+                "chunk_index": d["chunk_index"],
+                "text": d["text"],
+                "score": d["score"],
+            }
+            for d in documents
+        ]
 
         avg_score = sum(d["score"] for d in documents) / len(documents)
 
@@ -78,7 +85,7 @@ class Generator:
             return self._fallback_response(question, documents), sources, avg_score
 
         try:
-            from langchain.schema import HumanMessage, SystemMessage
+            from langchain_core.messages import HumanMessage, SystemMessage
 
             messages = [
                 SystemMessage(content=SYSTEM_PROMPT),
@@ -107,7 +114,7 @@ class Generator:
         return "\n---\n".join(parts)
 
     def _fallback_response(self, question: str, documents: List[dict]) -> str:
-        parts = [f"Based on the available documents, here is what I found:\n"]
+        parts = ["Based on the available documents, here is what I found:\n"]
         for doc in documents[:3]:
             parts.append(f"- From '{doc['filename']}': {doc['text'][:200]}...")
         parts.append(f"\nConfidence: {documents[0]['score']:.2f}" if documents else "")

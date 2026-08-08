@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import get_db
-from app.schemas.document import DocumentResponse, DocumentUploadResponse
-from app.models.user import User
+
 from app.auth.dependencies import get_current_user
-from app.rbac.dependencies import require_manager
+from app.db.session import get_db
+from app.models.user import User
+from app.schemas.document import DocumentResponse, DocumentUploadResponse
 from app.services.document import DocumentService
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
@@ -31,6 +31,7 @@ async def list_documents(
     service = DocumentService(db)
     if current_user.role.name == "Admin":
         from app.repositories.document import DocumentRepository
+
         repo = DocumentRepository(db)
         docs = await repo.list(skip, limit)
     else:
@@ -42,7 +43,7 @@ async def list_documents(
             original_filename=d.original_filename,
             file_size=d.file_size,
             mime_type=d.mime_type,
-            status=d.status.value if hasattr(d.status, 'value') else d.status,
+            status=d.status.value if hasattr(d.status, "value") else d.status,
             uploaded_by=d.uploaded_by,
             department_id=d.department_id,
             chunk_count=d.chunk_count,
@@ -70,7 +71,7 @@ async def get_document(
         original_filename=doc.original_filename,
         file_size=doc.file_size,
         mime_type=doc.mime_type,
-        status=doc.status.value if hasattr(doc.status, 'value') else doc.status,
+        status=doc.status.value if hasattr(doc.status, "value") else doc.status,
         uploaded_by=doc.uploaded_by,
         department_id=doc.department_id,
         chunk_count=doc.chunk_count,
@@ -86,6 +87,7 @@ async def delete_document(
     current_user: User = Depends(get_current_user),
 ):
     from app.rbac.dependencies import require_admin
+
     await require_admin(current_user)
     service = DocumentService(db)
     deleted = await service.delete_document(document_id)

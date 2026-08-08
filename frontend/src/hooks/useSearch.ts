@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import api from "../lib/api"
 import type { SearchResponse } from "../types"
@@ -16,10 +16,10 @@ export function useSearch() {
     enabled,
   })
 
-  const run = (q: string) => {
+  const run = useCallback((q: string) => {
     setQuery(q)
     setEnabled(true)
-  }
+  }, [])
 
   return { query, setQuery, run, ...search }
 }
