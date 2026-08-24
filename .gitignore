@@ -28,6 +28,7 @@ Thumbs.db
 backend/uploads/
 vector_store/
 *.db
+BACKEND_TESTING_GUIDE.md
 
 # Coverage
 htmlcov/
@@ -44,3 +45,6 @@ logs/
 
 # AI Workspace — runtime / generated artifacts (DO NOT COMMIT)
 .ai/
+
+# Resume
+RESUME_ENTRY.md
