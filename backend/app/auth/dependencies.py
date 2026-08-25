@@ -28,8 +28,11 @@ async def get_current_user(
     token: Optional[str] = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    # HttpOnly cookie first (browser flow), Bearer header fallback (API clients/tests).
-    raw_token = request.cookies.get(ACCESS_COOKIE) or token
+    # Explicit Authorization header wins; HttpOnly cookie is the fallback.
+    # (Header-first matters for API clients: an explicitly presented token
+    # identifies the caller for THIS request even if a newer session cookie
+    # sits in the jar.)
+    raw_token = token or request.cookies.get(ACCESS_COOKIE)
     if not raw_token:
         raise _unauthorized("Not authenticated")
 
