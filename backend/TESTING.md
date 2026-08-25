@@ -37,9 +37,10 @@
 | Test Suite | File | What We Test |
 |-----------|------|--------------|
 | Auth API | test_auth_api.py | Register, login, duplicate emails, invalid credentials |
-| Document API | test_document_api.py | Upload, list, delete, unauthorized access |
+| Cookie Auth | test_cookie_auth.py | HttpOnly cookie issuance, refresh rotation, CSRF guard, logout |
+| Document API | test_document_api.py | Upload (incl. content-signature + empty-file rejection), list, audit trail |
 | Chat API | test_chat_api.py | Chat flow, search, history |
-| RBAC | test_rbac.py | Role-based access, department filtering |
+| RBAC Matrix | test_rbac_matrix.py | Role-based access, department filtering, cross-user denial |
 
 **Run:** `pytest tests/integration -v`
 

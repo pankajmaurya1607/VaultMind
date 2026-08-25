@@ -37,29 +37,30 @@ python seed_data.py
 # Clone and configure
 git clone <repo>
 cd eka
+cp .env.example .env   # then fill in SECRET_KEY and API keys
 
-# Set environment variables
-export OPENAI_API_KEY=sk-your-key
-export SECRET_KEY=your-secure-secret-key
-
-# Start all services
+# Start all services (backend auto-applies migrations on boot)
 docker compose up -d
 
-# Seed the database
+# Seed the database (roles, departments, admin user)
 docker compose exec backend python seed_data.py
+
+# UI is served at http://localhost (nginx proxies /api to the backend)
 ```
 
 ### Services
 
 | Service | Port | Description |
 |---------|------|-------------|
+| frontend | 80 | nginx serving the React SPA, proxying `/api` to the backend |
 | backend | 8000 | FastAPI application |
 | postgres | 5432 | PostgreSQL + PGVector |
 | redis | 6379 | Redis (queue + cache) |
 | celery_worker | - | Async task processing |
+| celery_beat | - | Periodic tasks (metrics refresh, token-blacklist pruning) |
 | flower | 5555 | Celery monitoring |
-| prometheus | 9090 | Metrics collection |
-| grafana | 3000 | Dashboard visualization |
+| prometheus | 9090 | Metrics collection + alert rules |
+| grafana | 3000 | Dashboards (provisioned as code from `grafana/`) |
 
 ### Health Checks
 ```bash
@@ -75,8 +76,8 @@ SECRET_KEY=<random-64-char-string>
 DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/eka_db
 DATABASE_URL_SYNC=postgresql+psycopg2://user:pass@host:5432/eka_db
 REDIS_URL=redis://host:6379/0
-OPENAI_API_KEY=<optional>
-GROQ_API_KEY=<optional>
+GEMINI_API_KEY=<primary LLM - required for cloud chat>
+GROQ_API_KEY=<secondary/optional>
 ENVIRONMENT=production
 ```
 

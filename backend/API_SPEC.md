@@ -4,8 +4,23 @@
 
 ## Authentication
 
+Two equivalent mechanisms are supported on every authenticated endpoint:
+
+1. **HttpOnly cookies (browser/SPA flow)** — `POST /auth/login|register|refresh` set
+   `eka_access` (~30 min) and `eka_refresh` (7 days, path `/api/v1/auth`) as
+   `HttpOnly; SameSite=Lax; Secure` (Secure only in production) cookies.
+2. **Bearer header (API clients/scripts)** — `Authorization: Bearer <access_token>`.
+   An explicit header always takes precedence over cookies.
+
+**CSRF guard:** state-changing requests authenticated *via cookie* must send the
+custom header `X-Requested-With: XMLHttpRequest` (cross-site attackers cannot set
+custom headers). Requests carrying an `Authorization` header and all `/auth/*`
+endpoints are exempt.
+
 ### POST /auth/register
-Register a new user.
+Register a new user. Roles are assigned server-side — every self-registration
+creates an **Employee**; Admins change roles via `PATCH /users/{id}`.
+Passwords require min 8 chars with at least one letter and one digit.
 
 **Request Body:**
 ```json
@@ -13,12 +28,11 @@ Register a new user.
   "name": "string",
   "email": "string",
   "password": "string",
-  "department_id": "integer",
-  "role_id": "integer (default: 3)"
+  "department_id": "integer"
 }
 ```
 
-**Response (201):**
+**Response (200):** sets auth cookies and returns tokens
 ```json
 {
   "access_token": "string",
@@ -28,7 +42,7 @@ Register a new user.
 ```
 
 ### POST /auth/login
-Authenticate and receive tokens.
+Authenticate with email + password. Sets auth cookies.
 
 **Request Body:**
 ```json
@@ -48,25 +62,16 @@ Authenticate and receive tokens.
 ```
 
 ### POST /auth/refresh
-Refresh an expired access token.
+Rotate tokens. Reads the refresh token from the cookie first, then falls back to
+the JSON body or `Authorization` header. Blacklists the presented refresh token
+and the current access token (cookie flow).
 
-**Request Body:**
-```json
-{
-  "refresh_token": "string"
-}
-```
+**Request Body:** optional (`{"refresh_token": "string"}` for non-cookie clients)
 
-**Response (200):**
-```json
-{
-  "access_token": "string",
-  "token_type": "bearer"
-}
-```
+**Response (200):** new token pair + refreshed cookies
 
 ### POST /auth/logout
-Invalidate the current session.
+Blacklist the presented access/refresh tokens and clear auth cookies.
 
 **Response (200):**
 ```json
@@ -78,87 +83,95 @@ Invalidate the current session.
 ## Users
 
 ### GET /users/me
-Get current user profile.
+Get current user profile (cookie or bearer auth).
 
-**Headers:** `Authorization: Bearer <token>`
+### GET /users
+List all users (Admin only). **Paginated.**
+
+**Query Parameters:** `skip=0&limit=100`
 
 **Response (200):**
 ```json
 {
-  "id": "integer",
-  "name": "string",
-  "email": "string",
-  "department_id": "integer",
-  "department_name": "string",
-  "role_id": "integer",
-  "role_name": "string",
-  "created_at": "datetime"
+  "items": [ { "...user fields": "" } ],
+  "total": "integer",
+  "skip": "integer",
+  "limit": "integer"
 }
 ```
-
-### GET /users
-List all users (Admin only).
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Query Parameters:** `skip=0&limit=100`
 
 ### PATCH /users/:id
-Update user (Admin only).
+Update user name / department / role (Admin only).
 
-**Headers:** `Authorization: Bearer <token>`
+## Departments
 
-**Request Body:**
-```json
-{
-  "name": "string (optional)",
-  "department_id": "integer (optional)",
-  "role_id": "integer (optional)"
-}
-```
+### GET /departments
+List departments (any authenticated user).
+
+### GET /departments/roles
+List roles (any authenticated user).
 
 ## Documents
 
 ### POST /documents
-Upload a document.
+Upload a document. Files are streamed to disk with the size cap enforced
+per-chunk and validated against magic-byte content signatures.
 
-**Headers:** `Authorization: Bearer <token>`
-
-**Body:** `multipart/form-data` with `file` field
+**Body:** `multipart/form-data` with `file` field (max 10MB)
 
 **Supported types:** PDF, DOCX, MD, CSV, XLSX, TXT
+
+**Errors:** `400` unsupported extension / empty file / content-type mismatch,
+`413` file too large
 
 **Response (200):**
 ```json
 {
   "id": "integer",
   "filename": "string",
-  "status": "pending",
-  "message": "Document uploaded successfully"
+  "status": "pending"
 }
 ```
 
 ### GET /documents
-List user's documents (all if Admin).
+List documents (own uploads for users; all for Admin). **Paginated.**
 
-**Headers:** `Authorization: Bearer <token>`
+**Query Parameters:** `skip=0&limit=100`
+
+**Response (200):**
+```json
+{
+  "items": [
+    {
+      "id": "integer",
+      "original_filename": "string",
+      "file_size": "integer",
+      "mime_type": "string",
+      "status": "pending | processing | ready | failed",
+      "uploaded_by": "integer",
+      "department_id": "integer",
+      "chunk_count": "integer",
+      "error_message": "string | null",
+      "created_at": "datetime"
+    }
+  ],
+  "total": "integer",
+  "skip": "integer",
+  "limit": "integer"
+}
+```
 
 ### GET /documents/:id
-Get document details.
-
-**Headers:** `Authorization: Bearer <token>`
+Get document details (owner or Admin).
 
 ### DELETE /documents/:id
-Delete a document (Admin only).
-
-**Headers:** `Authorization: Bearer <token>`
+Delete a document, its chunks, and stored file (Admin only). Writes an audit row;
+non-admin attempts write an `rbac_denied` audit event.
 
 ## Search
 
 ### POST /search
-Search documents by natural language query.
-
-**Headers:** `Authorization: Bearer <token>`
+Semantic vector search scoped to the caller's department(s).
 
 **Request Body:**
 ```json
@@ -188,9 +201,7 @@ Search documents by natural language query.
 ## Chat
 
 ### POST /chat
-Send a message and get an AI-generated response.
-
-**Headers:** `Authorization: Bearer <token>`
+Send a message and get an AI-generated answer with citations.
 
 **Request Body:**
 ```json
@@ -221,21 +232,15 @@ Send a message and get an AI-generated response.
 ```
 
 ### GET /chat/history
-List user's chat sessions.
-
-**Headers:** `Authorization: Bearer <token>`
+List the user's chat sessions with message counts.
 
 ### GET /chat/history/:session_id
-Get messages for a specific session.
-
-**Headers:** `Authorization: Bearer <token>`
+Messages for a specific session (owner only; foreign sessions return empty).
 
 ## Admin
 
 ### GET /admin/metrics
-Get system metrics (Admin only).
-
-**Headers:** `Authorization: Bearer <token>`
+System metrics (Admin only).
 
 **Response (200):**
 ```json
@@ -252,9 +257,15 @@ Get system metrics (Admin only).
 ```
 
 ### GET /admin/audit
-View audit logs (Admin only).
+Audit logs (Admin only). **Paginated.**
 
-**Headers:** `Authorization: Bearer <token>`
+**Query Parameters:** `skip=0&limit=100`
+
+### GET /admin/departments
+List departments (Admin only).
+
+### GET /admin/roles
+List roles (Admin only).
 
 ## Health
 
@@ -273,6 +284,10 @@ Service health check.
 ## Metrics
 
 ### GET /metrics
-Prometheus metrics endpoint.
+Prometheus metrics endpoint (no auth).
 
-**Headers:** No auth required
+## Audit Events
+
+The following actions are recorded in `audit_logs`: `register`, `login`,
+`login_failed`, `logout`, `upload`, `delete`, `rbac_denied`. Query them via
+`GET /admin/audit`.
