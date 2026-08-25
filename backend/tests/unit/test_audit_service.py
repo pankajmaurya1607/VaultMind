@@ -147,12 +147,18 @@ class TestAuditServiceLogMethod:
 
 
 class TestAuditServiceGetClientIp:
-    """Test AuditService.get_client_ip static method."""
+    """Test AuditService.get_client_ip static method.
 
-    def test_extracts_ip_from_x_forwarded_for_header(self):
-        """Test IP extraction from X-Forwarded-For header."""
+    X-Forwarded-For is only trusted when TRUST_PROXY_HEADERS is enabled -
+    otherwise clients could spoof their IP to pollute the audit trail.
+    """
+
+    def test_extracts_ip_from_x_forwarded_for_header(self, monkeypatch):
+        """Test IP extraction from X-Forwarded-For header (trusted proxy)."""
+        from app.config.settings import settings
         from app.services.audit import AuditService
 
+        monkeypatch.setattr(settings, "TRUST_PROXY_HEADERS", True)
         request = Mock()
         request.headers = {"X-Forwarded-For": "192.168.1.1, 10.0.0.1"}
         request.client = None
@@ -160,16 +166,32 @@ class TestAuditServiceGetClientIp:
         ip = AuditService.get_client_ip(request)
         assert ip == "192.168.1.1"
 
-    def test_extracts_first_ip_from_multiple_forwarded(self):
+    def test_extracts_first_ip_from_multiple_forwarded(self, monkeypatch):
         """Test that first IP is extracted from multiple forwarded IPs."""
+        from app.config.settings import settings
         from app.services.audit import AuditService
 
+        monkeypatch.setattr(settings, "TRUST_PROXY_HEADERS", True)
         request = Mock()
         request.headers = {"X-Forwarded-For": "192.168.1.1, 10.0.0.1, 172.16.0.1"}
         request.client = None
 
         ip = AuditService.get_client_ip(request)
         assert ip == "192.168.1.1"
+
+    def test_ignores_forwarded_header_when_proxy_untrusted(self, monkeypatch):
+        """Default: XFF is spoofable and must be ignored."""
+        from app.config.settings import settings
+        from app.services.audit import AuditService
+
+        monkeypatch.setattr(settings, "TRUST_PROXY_HEADERS", False)
+        request = Mock()
+        request.headers = {"X-Forwarded-For": "192.168.1.1"}
+        request.client = Mock()
+        request.client.host = "127.0.0.1"
+
+        ip = AuditService.get_client_ip(request)
+        assert ip == "127.0.0.1"
 
     def test_uses_client_host_when_no_forwarded_header(self):
         """Test that client.host is used when no X-Forwarded-For header."""
@@ -194,10 +216,12 @@ class TestAuditServiceGetClientIp:
         ip = AuditService.get_client_ip(request)
         assert ip == "unknown"
 
-    def test_strips_whitespace_from_forwarded_ip(self):
+    def test_strips_whitespace_from_forwarded_ip(self, monkeypatch):
         """Test that whitespace is stripped from forwarded IP."""
+        from app.config.settings import settings
         from app.services.audit import AuditService
 
+        monkeypatch.setattr(settings, "TRUST_PROXY_HEADERS", True)
         request = Mock()
         request.headers = {"X-Forwarded-For": "  192.168.1.1  , 10.0.0.1"}
         request.client = None

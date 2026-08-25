@@ -202,12 +202,14 @@ class TestAuditService:
         assert service.repo is not None
 
     @pytest.mark.asyncio
-    async def test_get_client_ip_from_forwarded_header(self):
-        """Test IP extraction from X-Forwarded-For header."""
+    async def test_get_client_ip_from_forwarded_header(self, monkeypatch):
+        """Test IP extraction from X-Forwarded-For header (trusted proxy only)."""
         from unittest.mock import Mock
 
+        from app.config.settings import settings
         from app.services.audit import AuditService
 
+        monkeypatch.setattr(settings, "TRUST_PROXY_HEADERS", True)
         request = Mock()
         request.headers = {"X-Forwarded-For": "192.168.1.1, 10.0.0.1"}
         request.client = None

@@ -4,24 +4,39 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.cookies import ACCESS_COOKIE, REFRESH_COOKIE, clear_auth_cookies, set_auth_cookies
 from app.db.session import get_db
 from app.schemas.auth import LoginRequest, RefreshRequest, RegisterRequest, TokenResponse
+from app.services.audit import audit_event
 from app.services.auth import AuthService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=TokenResponse)
-async def register(body: RegisterRequest, response: Response, db: AsyncSession = Depends(get_db)):
+async def register(body: RegisterRequest, request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     service = AuthService(db)
     tokens = await service.register(body.name, body.email, body.password, body.department_id)
     set_auth_cookies(response, tokens["access_token"], tokens["refresh_token"])
+    await audit_event(request, db, action="register", resource="user", details=body.email, user_email=body.email)
     return tokens
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
+async def login(body: LoginRequest, request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     service = AuthService(db)
-    tokens = await service.login(body.email, body.password)
+    try:
+        tokens = await service.login(body.email, body.password)
+    except Exception:
+        await audit_event(
+            request,
+            db,
+            action="login_failed",
+            resource="auth",
+            details=body.email,
+            user_email=body.email,
+            success=False,
+        )
+        raise
     set_auth_cookies(response, tokens["access_token"], tokens["refresh_token"])
+    await audit_event(request, db, action="login", resource="auth", details=body.email, user_email=body.email)
     return tokens
 
 
@@ -65,4 +80,5 @@ async def logout(
     refresh_token = request.cookies.get(REFRESH_COOKIE) or x_refresh_token or ""
     result = await service.logout(access_token, refresh_token)
     clear_auth_cookies(response)
+    await audit_event(request, db, action="logout", resource="auth")
     return result

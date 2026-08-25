@@ -12,6 +12,36 @@ from app.tasks.process import process_document_task
 
 logger = logging.getLogger("eka")
 
+_UPLOAD_CHUNK_SIZE = 1024 * 1024  # 1 MiB
+
+
+def _zip_magic(head: bytes) -> bool:
+    # docx/xlsx are ZIP containers
+    return head.startswith(b"PK\x03\x04")
+
+
+def _text_magic(head: bytes) -> bool:
+    # txt/md/csv: reject binary payloads (NUL byte heuristic)
+    return b"\x00" not in head
+
+
+_MAGIC_VALIDATORS = {
+    ".pdf": lambda head: head.startswith(b"%PDF"),
+    ".docx": _zip_magic,
+    ".xlsx": _zip_magic,
+    ".txt": _text_magic,
+    ".md": _text_magic,
+    ".csv": _text_magic,
+}
+
+
+def validate_content_signature(ext: str, head: bytes) -> bool:
+    """Best-effort magic-byte check for known extensions."""
+    validator = _MAGIC_VALIDATORS.get(ext)
+    if validator is None:
+        return True
+    return validator(head)
+
 
 class DocumentService:
     def __init__(self, db: AsyncSession):
@@ -23,25 +53,48 @@ class DocumentService:
         if ext not in settings.ALLOWED_EXTENSIONS:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"File type '{ext}' not supported")
 
-        content = await file.read()
-        if len(content) > settings.MAX_UPLOAD_SIZE:
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"File exceeds max size of {settings.MAX_UPLOAD_SIZE} bytes",
-            )
-
         upload_dir = settings.UPLOAD_DIR
         os.makedirs(upload_dir, exist_ok=True)
         stored_filename = f"{uuid.uuid4()}{ext}"
         file_path = os.path.join(upload_dir, stored_filename)
-        with open(file_path, "wb") as f:
-            f.write(content)
+
+        # Stream to disk so oversized uploads never sit fully in memory;
+        # enforce the size cap per chunk.
+        size = 0
+        head = b""
+        try:
+            with open(file_path, "wb") as out:
+                while chunk := await file.read(_UPLOAD_CHUNK_SIZE):
+                    if size == 0:
+                        head = chunk[:16]
+                    size += len(chunk)
+                    if size > settings.MAX_UPLOAD_SIZE:
+                        raise HTTPException(
+                            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                            detail=f"File exceeds max size of {settings.MAX_UPLOAD_SIZE} bytes",
+                        )
+                    out.write(chunk)
+        except HTTPException:
+            os.remove(file_path)
+            raise
+
+        if size == 0:
+            os.remove(file_path)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is empty")
+
+        if not validate_content_signature(ext, head):
+            os.remove(file_path)
+            logger.warning("Content signature mismatch for %s upload (user %s)", ext, user_id)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File content does not match declared type '{ext}'",
+            )
 
         document = await self.repo.create(
             filename=stored_filename,
             original_filename=file.filename,
             file_path=file_path,
-            file_size=len(content),
+            file_size=size,
             mime_type=file.content_type or "application/octet-stream",
             uploaded_by=user_id,
             department_id=department_id,

@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.rbac.dependencies import get_effective_department_ids
+from app.rbac.dependencies import get_effective_department_ids, require_admin
 from app.schemas.document import DocumentResponse, DocumentUploadResponse
+from app.services.audit import audit_event
 from app.services.document import DocumentService
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
@@ -13,12 +14,23 @@ router = APIRouter(prefix="/documents", tags=["Documents"])
 
 @router.post("", response_model=DocumentUploadResponse)
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     service = DocumentService(db)
     doc = await service.upload(file, current_user.id, current_user.department_id)
+    await audit_event(
+        request,
+        db,
+        action="upload",
+        resource="document",
+        resource_id=doc.id,
+        details=doc.original_filename,
+        user_id=current_user.id,
+        user_email=current_user.email,
+    )
     return DocumentUploadResponse(id=doc.id, filename=doc.original_filename, status=doc.status.value)
 
 
@@ -81,14 +93,38 @@ async def get_document(
 @router.delete("/{document_id}")
 async def delete_document(
     document_id: int,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    from app.rbac.dependencies import require_admin
+    try:
+        await require_admin(current_user)
+    except HTTPException as exc:
+        await audit_event(
+            request,
+            db,
+            action="rbac_denied",
+            resource="document",
+            resource_id=document_id,
+            details=f"user {current_user.email} attempted admin delete",
+            user_id=current_user.id,
+            user_email=current_user.email,
+            success=False,
+        )
+        raise exc
 
-    await require_admin(current_user)
     service = DocumentService(db)
     deleted = await service.delete_document(document_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    await audit_event(
+        request,
+        db,
+        action="delete",
+        resource="document",
+        resource_id=document_id,
+        user_id=current_user.id,
+        user_email=current_user.email,
+    )
     return {"message": "Document deleted successfully"}
