@@ -15,10 +15,20 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+const authErrorMessages: Record<string, string> = {
+  "Invalid credentials": "Wrong email or password. Please check and try again.",
+  "Email already registered": "An account with this email already exists.",
+  "Rate limited": "Rate limited: 60 requests/min. Please wait.",
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
+    if (error.response?.status === 429) {
+      // Rate limit — surface quickly; UI can show specific message
+      error.message = "Rate limited: 60 requests/min. Please wait."
+    }
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
       const refreshToken = localStorage.getItem("refresh_token")
@@ -44,6 +54,12 @@ api.interceptors.response.use(
         localStorage.removeItem("user")
         window.location.href = "/login"
       }
+    }
+    // Map backend auth error details to user-friendly messages
+    if (error.response?.data?.detail) {
+      const detail = String(error.response.data.detail)
+      const mapped = authErrorMessages[detail] || detail
+      error.message = mapped
     }
     return Promise.reject(error)
   },

@@ -326,7 +326,7 @@ class TestFR015TextChunking:
 
 
 class TestFR016MultiModelEmbeddings:
-    """FR-016: Multi-Model Embeddings (OpenAI + Local fallback)."""
+    """FR-016: Multi-Model Embeddings (Local BGE primary, no paid APIs)."""
 
     def test_embedding_service_exists(self):
         """Test that EmbeddingService exists."""
@@ -336,21 +336,21 @@ class TestFR016MultiModelEmbeddings:
         assert service is not None
 
     def test_embedding_dimension(self):
-        """Test that embedding dimension is 1536."""
+        """Test that embedding dimension is 384 (BGE-small)."""
         from app.rag.embeddings.embedder import EmbeddingService
         
         service = EmbeddingService()
-        assert service.dimension == 1536
+        assert service.dimension == 384
 
-    def test_zero_vector_fallback(self):
-        """Test that zero vector is returned when no models available."""
+    def test_local_embedding_fallback(self):
+        """Test that local embedding works without external APIs."""
         from app.rag.embeddings.embedder import EmbeddingService
         
         service = EmbeddingService()
         vector = service.embed_query("test")
         
         assert isinstance(vector, list)
-        assert len(vector) == 1536
+        assert len(vector) == 384
 
 
 class TestFR017CosineSimilaritySearch:
@@ -426,7 +426,7 @@ class TestFR019AIChatEndpoint:
 
 
 class TestFR020LLMProviderStrategy:
-    """FR-020: LLM Provider Strategy (OpenAI + Groq + Fallback)."""
+    """FR-020: LLM Provider Strategy (Gemini + Groq + Fallback - all free)."""
 
     def test_generator_exists(self):
         """Test that Generator exists."""
@@ -610,23 +610,23 @@ class TestNFR008OfflineCapability:
     """NFR-008: Offline Capability without external API keys."""
 
     def test_local_embedding_fallback(self):
-        """Test that local embedding fallback works."""
+        """Test that local embedding works without external APIs."""
         from app.rag.embeddings.embedder import EmbeddingService
         
         service = EmbeddingService()
         vector = service.embed_query("test")
         
-        # Should return zero vector without external APIs
+        # Should work with local BGE model (no API key needed)
         assert isinstance(vector, list)
-        assert len(vector) == 1536
+        assert len(vector) == 384
 
     def test_local_llm_fallback(self):
-        """Test that local LLM fallback works."""
+        """Test that local LLM fallback works without external APIs."""
         from app.rag.llm.generator import Generator
         
         generator = Generator()
         
-        # Should work without external APIs
+        # Should work without external APIs (fallback response)
         docs = [
             {"document_id": 1, "filename": "test.pdf", "chunk_index": 0, "text": "test content", "score": 0.9}
         ]

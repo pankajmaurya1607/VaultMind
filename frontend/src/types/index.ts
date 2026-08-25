@@ -54,6 +54,8 @@ export interface Message {
   content: string
   sources: Source[] | null
   confidence_score: number | null
+  tokens_used?: number | null
+  latency_ms?: number | null
   created_at: string
 }
 
@@ -99,6 +101,7 @@ export interface RegisterBody {
   email: string
   password: string
   department_id: number
+  role_id?: number
 }
 
 export interface LoginBody {

@@ -96,7 +96,7 @@ class TestEmbedderEdgeCases:
         vector = service.embed_query("test query")
         
         assert isinstance(vector, list), "Should return a list"
-        assert len(vector) == 1536, "Should return 1536 dimensional vector"
+        assert len(vector) == 384, "Should return 384 dimensional vector (BGE-small)"
         assert all(v == 0.0 for v in vector), "Should be zero vector"
 
     def test_embedder_handles_empty_query(self):
@@ -107,7 +107,7 @@ class TestEmbedderEdgeCases:
         vector = service.embed_query("")
         
         assert isinstance(vector, list), "Should return a list"
-        assert len(vector) == 1536, "Should return 1536 dimensional vector"
+        assert len(vector) == 384, "Should return 384 dimensional vector (BGE-small)"
 
     def test_embedder_handles_special_characters(self):
         """Test that embedder handles special characters."""
@@ -117,7 +117,7 @@ class TestEmbedderEdgeCases:
         vector = service.embed_query("!@#$%^&*()_+-=[]{}|;':\",./<>?")
         
         assert isinstance(vector, list), "Should return a list"
-        assert len(vector) == 1536, "Should return 1536 dimensional vector"
+        assert len(vector) == 384, "Should return 384 dimensional vector (BGE-small)"
 
     def test_embedder_handles_very_long_query(self):
         """Test that embedder handles very long query."""
@@ -128,7 +128,7 @@ class TestEmbedderEdgeCases:
         vector = service.embed_query(long_query)
         
         assert isinstance(vector, list), "Should return a list"
-        assert len(vector) == 1536, "Should return 1536 dimensional vector"
+        assert len(vector) == 384, "Should return 384 dimensional vector (BGE-small)"
 
 
 class TestRetrieverEdgeCases:

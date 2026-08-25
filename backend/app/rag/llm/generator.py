@@ -19,11 +19,11 @@ CRITICAL RULES:
 7. If the question is not related to the knowledge base, politely decline to answer."""
 
 try:
-    from langchain_openai import ChatOpenAI
+    from langchain_google_genai import ChatGoogleGenerativeAI
 
-    _openai_available = bool(settings.OPENAI_API_KEY)
+    _gemini_available = bool(settings.GEMINI_API_KEY)
 except Exception:
-    _openai_available = False
+    _gemini_available = False
 
 try:
     from langchain_groq import ChatGroq
@@ -38,16 +38,16 @@ class Generator:
         self._llm = None
         self.last_tokens = 0
 
-        if _openai_available:
+        if _gemini_available:
             try:
-                self._llm = ChatOpenAI(
-                    model=settings.OPENAI_CHAT_MODEL,
-                    openai_api_key=settings.OPENAI_API_KEY,
+                self._llm = ChatGoogleGenerativeAI(
+                    model=settings.GEMINI_CHAT_MODEL,
+                    google_api_key=settings.GEMINI_API_KEY,
                     temperature=0.1,
                 )
-                logger.info(f"Using OpenAI: {settings.OPENAI_CHAT_MODEL}")
+                logger.info(f"Using Gemini: {settings.GEMINI_CHAT_MODEL}")
             except Exception as e:
-                logger.warning(f"OpenAI init failed: {e}")
+                logger.warning(f"Gemini init failed: {e}")
 
         if self._llm is None and _groq_available:
             try:
@@ -100,7 +100,7 @@ class Generator:
                 tokens = response.response_metadata.get("token_usage", {}).get("total_tokens", 0)
 
             self.last_tokens = tokens
-            TOKENS_USED.labels(model=settings.OPENAI_CHAT_MODEL).inc(tokens)
+            TOKENS_USED.labels(model=settings.GEMINI_CHAT_MODEL).inc(tokens)
             return response.content, sources, avg_score
 
         except Exception as e:

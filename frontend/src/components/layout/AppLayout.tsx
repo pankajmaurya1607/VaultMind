@@ -1,47 +1,45 @@
 import { useState } from "react"
+import { Menu } from "lucide-react"
 import Sidebar from "./Sidebar"
 import CommandBar from "./CommandBar"
+import { Button } from "@/components/ui/button"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 interface AppLayoutProps {
   children: React.ReactNode
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [open, setOpen] = useState(false)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-bg-base">
+    <div className="flex h-screen overflow-hidden bg-background">
       <div className="hidden md:flex">
         <Sidebar />
       </div>
 
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setSidebarOpen(false)}
-          />
-          <div className="absolute left-0 top-0 bottom-0 animate-slide-in">
-            <Sidebar />
-          </div>
-        </div>
-      )}
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="left" className="p-0 w-64 border-r">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Navigation</SheetTitle>
+          </SheetHeader>
+          <Sidebar />
+        </SheetContent>
+      </Sheet>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="flex items-center gap-3 px-4 py-3 border-b border-border bg-bg-surface/50 backdrop-blur-sm">
-          <button
-            className="md:hidden text-text-muted hover:text-text text-lg p-1"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            aria-label="Toggle sidebar"
-          >
-            ☰
-          </button>
-          <CommandBar />
+      <div className="flex flex-1 flex-col min-w-0">
+        <header className="flex h-14 items-center gap-3 border-b bg-card/50 px-4 backdrop-blur-sm">
+          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setOpen(true)} aria-label="Toggle sidebar">
+            <Menu className="h-5 w-5" />
+          </Button>
+          <div className="flex-1 flex justify-center">
+            <div className="w-full max-w-xl">
+              <CommandBar />
+            </div>
+          </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto bg-background">{children}</main>
       </div>
     </div>
   )

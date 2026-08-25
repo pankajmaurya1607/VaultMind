@@ -11,7 +11,7 @@ from app.main import app
 from app.models.department import Department
 from app.models.role import Role
 
-TEST_DATABASE_URL = "postgresql+asyncpg://eka_user:eka_pass@localhost:5432/eka_test"
+TEST_DATABASE_URL = "postgresql+asyncpg://eka_user:eka_pass@localhost:5432/eka_db"
 
 test_engine = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
 test_async_session = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)

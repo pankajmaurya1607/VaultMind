@@ -16,13 +16,13 @@
                                           └────────────────┘
                            │
                     ┌──────▼──────┐
-                    │  AI Services│
-                    │ ┌─────────┐ │
-                    │ │OpenAI   │ │
-                    │ │Groq     │ │
-                    │ │Sentence │ │
-                    │ │Transform│ │
-                    │ └─────────┘ │
+                     │  AI Services│
+                     │ ┌─────────┐ │
+                     │ │Gemini   │ │
+                     │ │Groq     │ │
+                     │ │Sentence │ │
+                     │ │Transform│ │
+                     │ └─────────┘ │
                     └─────────────┘
 ```
 
@@ -61,7 +61,7 @@ Upload → Validation → Celery Queue → Parser → Chunker → Embedder → V
 
 - **Parser:** Extracts text from PDF, DOCX, MD, CSV, XLSX, TXT
 - **Chunker:** Recursive character splitting (1000 chars, 200 overlap)
-- **Embedder:** OpenAI text-embedding-3-small (fallback: BAAI/bge-small-en-v1.5)
+- **Embedder:** BAAI/bge-small-en-v1.5 (local, free)
 - **Vector Store:** PGVector (fallback: in-memory numpy store)
 
 ### 6. Retriever
@@ -74,7 +74,7 @@ Upload → Validation → Celery Queue → Parser → Chunker → Embedder → V
 - Context-aware answer generation
 - Source citation enforcement
 - Confidence scoring (average similarity)
-- Providers: OpenAI GPT-4o-mini → Groq Llama-3.1 → Fallback template
+- Providers: Gemini 2.0 Flash → Groq Llama-3.1 → Fallback template
 
 ### 8. Chat Service
 - Session management (create, retrieve)

@@ -26,9 +26,12 @@ Thumbs.db
 
 # Project
 backend/uploads/
+uploads/
 vector_store/
 *.db
 BACKEND_TESTING_GUIDE.md
+frontend/test-results/
+.pytest_cache/
 
 # Coverage
 htmlcov/
@@ -48,3 +51,6 @@ logs/
 
 # Resume
 RESUME_ENTRY.md
+
+# Local planning
+COMPLETION_PLAN.md

@@ -103,25 +103,27 @@ Use the Repository pattern with a generic `BaseRepository<T>` and specific repos
 
 ---
 
-# ADR 0006: OpenAI with Fallback Strategy
+# ADR 0006: Free & Open Source AI Strategy
 
 ## Status
 Accepted
 
 ## Context
-The system needs embeddings and LLM responses but should work without external API dependencies.
+The system needs embeddings and LLM responses but should work without external API dependencies and use free tools.
 
 ## Decision
-Use OpenAI as primary provider with automatic fallback:
-- Embeddings: OpenAI → Sentence Transformers (local) → Zero vectors
-- LLM: OpenAI → Groq → Template-based fallback
+Use free/open-source AI providers with automatic fallback:
+- Embeddings: BAAI/bge-small-en-v1.5 (local, free) → Zero vectors
+- LLM: Gemini 2.0 Flash (free tier) → Groq Llama-3.1 (free tier) → Template-based fallback
 
 ## Rationale
-- Best quality when APIs are available
-- Development possible without API keys
+- All providers have free tiers or are completely free
+- No API keys required for local embeddings
+- Development possible without any API keys
 - Graceful degradation
 
 ## Consequences
 - Multiple code paths for AI operations
 - Quality varies by provider
 - Local mode has reduced capabilities
+- No paid API dependencies

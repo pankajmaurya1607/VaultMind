@@ -4,8 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import get_current_user
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.document import DocumentResponse, DocumentUploadResponse
+from app.rbac.dependencies import get_effective_department_ids
 from app.services.document import DocumentService
+from app.schemas.document import DocumentResponse, DocumentUploadResponse
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -29,14 +30,11 @@ async def list_documents(
     current_user: User = Depends(get_current_user),
 ):
     service = DocumentService(db)
+    dept_ids = get_effective_department_ids(current_user)
     if current_user.role.name == "Admin":
-        from app.repositories.document import DocumentRepository
-
-        repo = DocumentRepository(db)
-        docs = await repo.list(skip, limit)
+        docs = await service.get_all_documents(skip, limit)
     else:
-        docs = await service.get_user_documents(current_user.id, skip, limit)
-
+        docs = await service.get_user_documents(current_user.id, dept_ids, skip, limit)
     return [
         DocumentResponse(
             id=d.id,

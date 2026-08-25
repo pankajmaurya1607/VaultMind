@@ -23,20 +23,19 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     ALGORITHM: str = "HS256"
 
-    # OpenAI
-    OPENAI_API_KEY: str = ""
-    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
-    OPENAI_CHAT_MODEL: str = "gpt-4o-mini"
+    # Gemini (Primary LLM)
+    GEMINI_API_KEY: str = ""
+    GEMINI_CHAT_MODEL: str = "gemini-2.0-flash"
 
-    # Groq
+    # Groq (Secondary LLM - Free)
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.1-70b-versatile"
 
-    # Local embedding
+    # Local embedding (Free)
     EMBEDDING_MODEL_LOCAL: str = "BAAI/bge-small-en-v1.5"
 
     # PGVector
-    PGVECTOR_DIMENSION: int = 1536
+    PGVECTOR_DIMENSION: int = 384  # BGE-small-en-v1.5 dimension
 
     # Upload
     UPLOAD_DIR: str = "./uploads"

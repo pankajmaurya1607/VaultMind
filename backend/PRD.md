@@ -59,7 +59,7 @@
 ### 3.6 Chat
 - FR-029: Users shall ask questions in natural language
 - FR-030: The system shall retrieve relevant context using vector search
-- FR-031: The system shall generate answers using an LLM (OpenAI / Groq / fallback)
+- FR-031: The system shall generate answers using an LLM (Gemini / Groq / fallback)
 - FR-032: Answers shall cite sources (document filename, chunk index)
 - FR-033: Answers shall include a confidence score
 - FR-034: Chat sessions shall maintain conversation history

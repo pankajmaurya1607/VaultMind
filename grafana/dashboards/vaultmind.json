@@ -1,0 +1,140 @@
+{
+  "title": "VaultMind Enterprise Knowledge Assistant",
+  "uid": "vaultmind",
+  "tags": ["vaultmind", "eka"],
+  "timezone": "browser",
+  "schemaVersion": 30,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Total Documents",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "documents_total",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4}
+    },
+    {
+      "type": "stat",
+      "title": "Total Users",
+      "datasource": "Prometheus",
+      "targets": [
+        {"expr": "active_users", "legendFormat": "active"}
+      ],
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4}
+    },
+    {
+      "type": "stat",
+      "title": "Total Chat Sessions",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "total_chat_sessions", "legendFormat": "sessions"}],
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4}
+    },
+    {
+      "type": "graph",
+      "title": "HTTP Request Latency",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum(http_request_duration_ms_bucket) by (le) OR on le (le=\"5\"))",
+          "legendFormat": "p50 latency"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(http_request_duration_ms_bucket) by (le) OR on le (le=\"10000\"))",
+          "legendFormat": "p95 latency"
+        }
+      ],
+      "gridPos": {"x": 0, "y": 4, "w": 18, "h": 6}
+    },
+    {
+      "type": "graph",
+      "title": "Chat Response Latency",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum(chat_response_duration_ms_bucket) by (le))",
+          "legendFormat": "p50 chat latency"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(chat_response_duration_ms_bucket) by (le))",
+          "legendFormat": "p95 chat latency"
+        }
+      ],
+      "gridPos": {"x": 0, "y": 10, "w": 18, "h": 6}
+    },
+    {
+      "type": "graph",
+      "title": "Search Latency",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum(search_duration_ms_bucket) by (le))",
+          "legendFormat": "p50 search latency"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(search_duration_ms_bucket) by (le))",
+          "legendFormat": "p95 search latency"
+        }
+      ],
+      "gridPos": {"x": 0, "y": 16, "w": 18, "h": 6}
+    },
+    {
+      "type": "graph",
+      "title": "Tokens Used Total",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "tokens_used_total", "legendFormat": "{{model}"}],
+      "gridPos": {"x": 0, "y": 22, "w": 18, "h": 6}
+    },
+    {
+      "type": "graph",
+      "title": "Document Status Distribution",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(documents_total)",
+          "legendFormat": "total"
+        },
+        {
+          "expr": "documents_total{status=\"ready\"}",
+          "legendFormat": "ready"
+        },
+        {
+          "expr": "documents_total{status=\"processing\"}",
+          "legendFormat": "processing"
+        },
+        {
+          "expr": "documents_total{status=\"pending\"}",
+          "legendFormat": "pending"
+        },
+        {
+          "expr": "documents_total{status=\"failed\"}",
+          "legendFormat": "failed"
+        }
+      ],
+      "gridPos": {"x": 0, "y": 28, "w": 18, "h": 6}
+    },
+    {
+      "type": "piechart",
+      "title": "Documents by Status (Pie)",
+      "datasource": "Prometheus",
+      "targets": [
+        {"expr": "documents_total{status=\"ready\"}", "legendFormat": "ready"},
+        {"expr": "documents_total{status=\"processing\"}", "legendFormat": "processing"},
+        {"expr": "documents_total{status=\"pending\"}", "legendFormat": "pending"},
+        {"expr": "documents_total{status=\"failed\"}", "legendFormat": "failed"}
+      ],
+      "gridPos": {"x": 18, "y": 28, "w": 6, "h": 6}
+    },
+    {
+      "type": "stat",
+      "title": "Error Count",
+      "datasource": "Prometheus",
+      "targets": [{"expr": "error_count", "legendFormat": "errors"}],
+      "gridPos": {"x": 24, "y": 28, "w": 6, "h": 4}
+    }
+  ]
+}

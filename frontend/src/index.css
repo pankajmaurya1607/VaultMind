@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 @theme {
   --color-bg-base: #0B0D14;
@@ -19,28 +22,123 @@
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+:root {
+  --background: 11 13 20;
+  --foreground: 226 229 237;
+  --card: 20 23 32;
+  --card-foreground: 226 229 237;
+  --popover: 28 32 48;
+  --popover-foreground: 226 229 237;
+  --primary: 124 92 252;
+  --primary-foreground: 255 255 255;
+  --secondary: 34 38 57;
+  --secondary-foreground: 226 229 237;
+  --muted: 34 38 57;
+  --muted-foreground: 107 113 133;
+  --accent: 34 38 57;
+  --accent-foreground: 226 229 237;
+  --destructive: 239 68 68;
+  --destructive-foreground: 255 255 255;
+  --border: 38 42 58;
+  --input: 38 42 58;
+  --ring: 124 92 252;
+  --radius: 0.75rem;
+  --chart-1: 124 92 252;
+  --chart-2: 16 185 129;
+  --chart-3: 245 158 11;
+  --chart-4: 59 130 246;
+  --chart-5: 239 68 68;
+  --sidebar-background: 20 23 32;
+  --sidebar-foreground: 226 229 237;
+  --sidebar-primary: 124 92 252;
+  --sidebar-primary-foreground: 255 255 255;
+  --sidebar-accent: 34 38 57;
+  --sidebar-accent-foreground: 226 229 237;
+  --sidebar-border: 38 42 58;
+  --sidebar-ring: 124 92 252;
 }
 
-body {
-  font-family: var(--font-sans);
-  background-color: var(--color-bg-base);
-  color: var(--color-text);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+.dark {
+  --background: 11 13 20;
+  --foreground: 226 229 237;
+  --card: 20 23 32;
+  --card-foreground: 226 229 237;
+  --popover: 28 32 48;
+  --popover-foreground: 226 229 237;
+  --primary: 124 92 252;
+  --primary-foreground: 255 255 255;
+  --secondary: 34 38 57;
+  --secondary-foreground: 226 229 237;
+  --muted: 34 38 57;
+  --muted-foreground: 107 113 133;
+  --accent: 34 38 57;
+  --accent-foreground: 226 229 237;
+  --destructive: 239 68 68;
+  --destructive-foreground: 255 255 255;
+  --border: 38 42 58;
+  --input: 38 42 58;
+  --ring: 124 92 252;
+}
+
+@theme inline {
+  --color-background: rgb(var(--background));
+  --color-foreground: rgb(var(--foreground));
+  --color-card: rgb(var(--card));
+  --color-card-foreground: rgb(var(--card-foreground));
+  --color-popover: rgb(var(--popover));
+  --color-popover-foreground: rgb(var(--popover-foreground));
+  --color-primary: rgb(var(--primary));
+  --color-primary-foreground: rgb(var(--primary-foreground));
+  --color-secondary: rgb(var(--secondary));
+  --color-secondary-foreground: rgb(var(--secondary-foreground));
+  --color-muted: rgb(var(--muted));
+  --color-muted-foreground: rgb(var(--muted-foreground));
+  --color-accent: rgb(var(--accent));
+  --color-accent-foreground: rgb(var(--accent-foreground));
+  --color-destructive: rgb(var(--destructive));
+  --color-destructive-foreground: rgb(var(--destructive-foreground));
+  --color-border: rgb(var(--border));
+  --color-input: rgb(var(--input));
+  --color-ring: rgb(var(--ring));
+  --color-chart-1: rgb(var(--chart-1));
+  --color-chart-2: rgb(var(--chart-2));
+  --color-chart-3: rgb(var(--chart-3));
+  --color-chart-4: rgb(var(--chart-4));
+  --color-chart-5: rgb(var(--chart-5));
+  --color-sidebar: rgb(var(--sidebar-background));
+  --color-sidebar-foreground: rgb(var(--sidebar-foreground));
+  --color-sidebar-primary: rgb(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: rgb(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: rgb(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: rgb(var(--sidebar-accent-foreground));
+  --color-sidebar-border: rgb(var(--sidebar-border));
+  --color-sidebar-ring: rgb(var(--sidebar-ring));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid rgb(var(--ring));
   outline-offset: 2px;
 }
 
 ::selection {
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
+  background: rgba(124, 92, 252, 0.15);
+  color: rgb(var(--primary));
 }
 
 @keyframes fadeIn {

@@ -1,5 +1,7 @@
+import logging
 import os
 import uuid
+from typing import List
 
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,7 +25,7 @@ class DocumentService:
         content = await file.read()
         if len(content) > settings.MAX_UPLOAD_SIZE:
             raise HTTPException(
-                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=f"File exceeds max size of {settings.MAX_UPLOAD_SIZE} bytes",
             )
 
@@ -48,14 +50,10 @@ class DocumentService:
         process_document_task.delay(document.id)
         return document
 
-    async def get_user_documents(self, user_id: int, skip: int = 0, limit: int = 100) -> list[Document]:
-        return await self.repo.get_by_user(user_id, skip, limit)
+    async def get_user_documents(self, user_id: int, department_ids: list[int], skip: int = 0, limit: int = 100) -> list[Document]:
+        """Get documents uploaded by user, filtered to their department."""
+        return await self.repo.get_by_user_with_dept_filter(user_id, department_ids, skip, limit)
 
-    async def get_document(self, id: int) -> Document | None:
-        return await self.repo.get(id)
-
-    async def delete_document(self, id: int) -> bool:
-        doc = await self.repo.get(id)
-        if doc and os.path.exists(doc.file_path):
-            os.remove(doc.file_path)
-        return await self.repo.delete(id)
+    async def get_all_documents(self, skip: int = 0, limit: int = 100) -> list[Document]:
+        """Get all documents (Admin only)."""
+        return await self.repo.list(skip, limit)

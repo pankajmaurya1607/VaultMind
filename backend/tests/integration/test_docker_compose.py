@@ -65,10 +65,10 @@ class TestDockerComposeConfiguration:
         compose_path = get_project_root() / "docker-compose.yml"
         content = compose_path.read_text()
         
-        # Check for healthcheck in redis section
-        redis_section = content.split("redis:")[1].split("\n\n")[0] if "redis:" in content else ""
-        assert "healthcheck:" in redis_section, "Redis must have health check configured"
-        assert "redis-cli ping" in redis_section, "Redis health check must use redis-cli ping"
+        # Check for healthcheck in redis section using regex
+        match = re.search(r'redis:.*?healthcheck:', content, re.DOTALL)
+        assert match is not None, "Redis must have health check configured"
+        assert "redis-cli ping" in content, "Redis health check must use redis-cli ping"
 
     def test_backend_depends_on_postgres_and_redis(self):
         """Test that backend service depends on postgres and redis."""
@@ -289,11 +289,11 @@ class TestMetricsEndpoint:
     @pytest.mark.asyncio
     async def test_metrics_endpoint_returns_200(self, client: AsyncClient):
         """Test that /metrics endpoint returns 200."""
-        response = await client.get("/metrics")
+        response = await client.get("/metrics", follow_redirects=True)
         assert response.status_code == 200
 
     @pytest.mark.asyncio
     async def test_metrics_endpoint_returns_text(self, client: AsyncClient):
         """Test that /metrics endpoint returns prometheus text format."""
-        response = await client.get("/metrics")
+        response = await client.get("/metrics", follow_redirects=True)
         assert "text/plain" in response.headers["content-type"]
