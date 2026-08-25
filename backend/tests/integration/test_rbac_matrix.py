@@ -103,7 +103,9 @@ class TestRBACMatrix:
         doc_id = upload.json()["id"]
 
         # User A must not see B's document by id...
-        peek = await client.get(f"/api/v1/documents/{doc_id}", headers={"Authorization": f"Bearer {emp_a['access_token']}"})
+        peek = await client.get(
+            f"/api/v1/documents/{doc_id}", headers={"Authorization": f"Bearer {emp_a['access_token']}"}
+        )
         assert peek.status_code in (403, 404)  # denied / scope-hidden for foreign user
 
         # ...and A's list never contains it.
