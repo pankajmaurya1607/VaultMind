@@ -11,7 +11,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post("/register", response_model=TokenResponse)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     service = AuthService(db)
-    return await service.register(body.name, body.email, body.password, body.department_id, body.role_id)
+    return await service.register(body.name, body.email, body.password, body.department_id)
 
 
 @router.post("/login", response_model=TokenResponse)

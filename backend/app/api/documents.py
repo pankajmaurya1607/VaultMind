@@ -5,8 +5,8 @@ from app.auth.dependencies import get_current_user
 from app.db.session import get_db
 from app.models.user import User
 from app.rbac.dependencies import get_effective_department_ids
-from app.services.document import DocumentService
 from app.schemas.document import DocumentResponse, DocumentUploadResponse
+from app.services.document import DocumentService
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 

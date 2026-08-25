@@ -9,10 +9,10 @@ Tests follow TDD approach:
 - Refactor: Improve code while keeping tests green
 """
 
-import pytest
-from unittest.mock import Mock, AsyncMock, patch
-from fastapi import HTTPException, UploadFile
+from unittest.mock import AsyncMock, Mock
 
+import pytest
+from fastapi import HTTPException, UploadFile
 
 # Test markers
 pytestmark = [
@@ -90,42 +90,44 @@ class TestDocumentServiceValidation:
     @pytest.mark.asyncio
     async def test_rejects_unsupported_extension(self):
         """Test that unsupported file extensions are rejected."""
-        from app.services.document import DocumentService
         from sqlalchemy.ext.asyncio import AsyncSession
-        
+
+        from app.services.document import DocumentService
+
         db = AsyncMock(spec=AsyncSession)
         service = DocumentService(db)
-        
+
         # Create mock file with unsupported extension
         mock_file = Mock(spec=UploadFile)
         mock_file.filename = "malware.exe"
         mock_file.content_type = "application/x-executable"
-        
+
         with pytest.raises(HTTPException) as exc_info:
             await service.upload(mock_file, user_id=1, department_id=1)
-        
+
         assert exc_info.value.status_code == 400
         assert "not supported" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_rejects_oversized_file(self):
         """Test that files exceeding max size are rejected."""
-        from app.services.document import DocumentService
-        from app.config.settings import settings
         from sqlalchemy.ext.asyncio import AsyncSession
-        
+
+        from app.config.settings import settings
+        from app.services.document import DocumentService
+
         db = AsyncMock(spec=AsyncSession)
         service = DocumentService(db)
-        
+
         # Create mock file with valid extension but oversized content
         mock_file = Mock(spec=UploadFile)
         mock_file.filename = "large_document.pdf"
         mock_file.content_type = "application/pdf"
         mock_file.read = AsyncMock(return_value=b"x" * (settings.MAX_UPLOAD_SIZE + 1))
-        
+
         with pytest.raises(HTTPException) as exc_info:
             await service.upload(mock_file, user_id=1, department_id=1)
-        
+
         assert exc_info.value.status_code == 413
         assert "exceeds max size" in exc_info.value.detail
 
@@ -136,50 +138,52 @@ class TestRBACValidation:
     def test_role_checker_initialization(self):
         """Test that RoleChecker initializes with allowed roles."""
         from app.rbac.dependencies import RoleChecker
-        
+
         checker = RoleChecker(["Admin", "Manager"])
         assert checker.allowed_roles == ["Admin", "Manager"]
 
     def test_get_effective_department_ids_admin(self):
         """Test that Admin users get empty department list (all access)."""
-        from app.rbac.dependencies import get_effective_department_ids
         from unittest.mock import Mock
-        
+
+        from app.rbac.dependencies import get_effective_department_ids
+
         user = Mock()
         user.role.name = "Admin"
         user.department_id = 1
-        
+
         dept_ids = get_effective_department_ids(user)
         assert dept_ids == [], "Admin should have empty department list"
 
     def test_get_effective_department_ids_employee(self):
         """Test that Employee users get their department ID."""
-        from app.rbac.dependencies import get_effective_department_ids
         from unittest.mock import Mock
-        
+
+        from app.rbac.dependencies import get_effective_department_ids
+
         user = Mock()
         user.role.name = "Employee"
         user.department_id = 5
-        
+
         dept_ids = get_effective_department_ids(user)
         assert dept_ids == [5], "Employee should have their department ID"
 
     def test_require_admin_role(self):
         """Test that require_admin only allows Admin role."""
         from app.rbac.dependencies import require_admin
-        
+
         assert require_admin.allowed_roles == ["Admin"]
 
     def test_require_manager_role(self):
         """Test that require_manager allows Admin and Manager roles."""
         from app.rbac.dependencies import require_manager
-        
+
         assert require_manager.allowed_roles == ["Admin", "Manager"]
 
     def test_require_employee_role(self):
         """Test that require_employee allows all roles."""
         from app.rbac.dependencies import require_employee
-        
+
         assert require_employee.allowed_roles == ["Admin", "Manager", "Employee"]
 
 
@@ -189,9 +193,10 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_audit_service_initialization(self):
         """Test that AuditService initializes correctly."""
-        from app.services.audit import AuditService
         from sqlalchemy.ext.asyncio import AsyncSession
-        
+
+        from app.services.audit import AuditService
+
         db = AsyncMock(spec=AsyncSession)
         service = AuditService(db)
         assert service.repo is not None
@@ -199,37 +204,40 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_get_client_ip_from_forwarded_header(self):
         """Test IP extraction from X-Forwarded-For header."""
-        from app.services.audit import AuditService
         from unittest.mock import Mock
-        
+
+        from app.services.audit import AuditService
+
         request = Mock()
         request.headers = {"X-Forwarded-For": "192.168.1.1, 10.0.0.1"}
         request.client = None
-        
+
         ip = AuditService.get_client_ip(request)
         assert ip == "192.168.1.1", "Should extract first IP from X-Forwarded-For"
 
     def test_get_client_ip_from_client(self):
         """Test IP extraction from request.client."""
-        from app.services.audit import AuditService
         from unittest.mock import Mock
-        
+
+        from app.services.audit import AuditService
+
         request = Mock()
         request.headers = {}
         request.client = Mock()
         request.client.host = "127.0.0.1"
-        
+
         ip = AuditService.get_client_ip(request)
         assert ip == "127.0.0.1", "Should use client.host when no X-Forwarded-For"
 
     def test_get_client_ip_unknown(self):
         """Test IP extraction when no client info available."""
-        from app.services.audit import AuditService
         from unittest.mock import Mock
-        
+
+        from app.services.audit import AuditService
+
         request = Mock()
         request.headers = {}
         request.client = None
-        
+
         ip = AuditService.get_client_ip(request)
         assert ip == "unknown", "Should return 'unknown' when no client info"

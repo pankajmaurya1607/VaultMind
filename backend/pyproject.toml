@@ -31,6 +31,7 @@ markers = [
     "unit: fast isolated tests (no external services)",
     "integration: tests requiring live Postgres/Redis",
     "security: security-focused tests (auth, injection, RBAC)",
+    "rag: RAG pipeline tests",
     "ragas: RAG evaluation-quality tests",
     "docker: docker/compose configuration tests",
     "performance: latency/throughput assertions",

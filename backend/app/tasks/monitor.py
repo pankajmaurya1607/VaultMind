@@ -1,20 +1,20 @@
 import logging
-from sqlalchemy import create_engine, select, func
-from sqlalchemy.orm import Session
 
 from celery import shared_task
 
-from app.config.settings import settings
-from app.services.monitoring import MonitoringService
 from app.models.document import Document, DocumentStatus
+
+logger = logging.getLogger("eka")
 
 
 @shared_task(bind=True, max_retries=3)
 def check_failed_documents(self):
     """Periodically check for documents that failed processing and log alerts."""
-    from app.models.document import Document, DocumentStatus
+    from sqlalchemy.orm import Session
 
-    engine = create_engine(settings.DATABASE_URL_SYNC)
+    from app.db.sync_engine import get_sync_engine
+
+    engine = get_sync_engine()
     try:
         with Session(engine) as db:
             failed = (

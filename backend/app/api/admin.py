@@ -2,8 +2,6 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.models.department import Department
-from app.models.role import Role
 from app.models.user import User
 from app.rbac.dependencies import require_admin
 from app.repositories.audit import AuditLogRepository

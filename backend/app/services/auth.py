@@ -3,26 +3,39 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt import create_access_token, create_refresh_token, decode_token, hash_password, verify_password
 from app.repositories.auth import AuthRepository
+from app.repositories.role import RoleRepository
 from app.repositories.user import UserRepository
+
+DEFAULT_ROLE_NAME = "Employee"
 
 
 class AuthService:
     def __init__(self, db: AsyncSession):
         self.user_repo = UserRepository(db)
         self.auth_repo = AuthRepository(db)
+        self.role_repo = RoleRepository(db)
         self.db = db
 
-    async def register(self, name: str, email: str, password: str, department_id: int, role_id: int = 3) -> dict:
+    async def register(self, name: str, email: str, password: str, department_id: int) -> dict:
         existing = await self.user_repo.get_by_email(email)
         if existing:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+
+        # Roles are assigned server-side only; self-service registration always
+        # creates an Employee. Admins change roles via PATCH /users/{id}.
+        role = await self.role_repo.get_by_name(DEFAULT_ROLE_NAME)
+        if role is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="System roles not initialized - run seed_data first",
+            )
 
         user = await self.user_repo.create(
             name=name,
             email=email,
             password_hash=hash_password(password),
             department_id=department_id,
-            role_id=role_id,
+            role_id=role.id,
         )
         access_token = create_access_token({"sub": str(user.id)})
         refresh_token = create_refresh_token({"sub": str(user.id)})

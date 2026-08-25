@@ -14,7 +14,6 @@ from pathlib import Path
 import pytest
 import yaml
 
-
 # Test markers
 pytestmark = [
     pytest.mark.unit,

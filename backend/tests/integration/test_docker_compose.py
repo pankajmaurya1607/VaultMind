@@ -9,14 +9,11 @@ Tests follow TDD approach:
 - Refactor: Improve code while keeping tests green
 """
 
-import os
 import re
 from pathlib import Path
 
 import pytest
-import pytest_asyncio
 from httpx import AsyncClient
-
 
 # Test markers
 pytestmark = [
@@ -42,7 +39,7 @@ class TestDockerComposeConfiguration:
         """Test that docker-compose.yml has valid structure."""
         compose_path = get_project_root() / "docker-compose.yml"
         content = compose_path.read_text()
-        
+
         # Check for required sections
         assert "services:" in content, "docker-compose.yml must define services"
         assert "postgres:" in content, "docker-compose.yml must define postgres service"
@@ -54,7 +51,7 @@ class TestDockerComposeConfiguration:
         """Test that PostgreSQL has health check configured."""
         compose_path = get_project_root() / "docker-compose.yml"
         content = compose_path.read_text()
-        
+
         # Check for healthcheck in postgres section
         postgres_section = content.split("postgres:")[1].split("\n\n")[0] if "postgres:" in content else ""
         assert "healthcheck:" in postgres_section, "PostgreSQL must have health check configured"
@@ -64,17 +61,18 @@ class TestDockerComposeConfiguration:
         """Test that Redis has health check configured."""
         compose_path = get_project_root() / "docker-compose.yml"
         content = compose_path.read_text()
-        
+
         # Check for healthcheck in redis section using regex
         match = re.search(r'redis:.*?healthcheck:', content, re.DOTALL)
         assert match is not None, "Redis must have health check configured"
-        assert "redis-cli ping" in content, "Redis health check must use redis-cli ping"
+        # Accepts both exec-form ["CMD", "redis-cli", "ping"] and shell form
+        assert re.search(r"redis-cli['\"\], ]+ping", content), "Redis health check must use redis-cli ping"
 
     def test_backend_depends_on_postgres_and_redis(self):
         """Test that backend service depends on postgres and redis."""
         compose_path = get_project_root() / "docker-compose.yml"
         content = compose_path.read_text()
-        
+
         # Check for depends_on in backend section
         backend_section = content.split("backend:")[1].split("\n\n")[0] if "backend:" in content else ""
         assert "depends_on:" in backend_section, "Backend must depend on other services"
@@ -85,7 +83,7 @@ class TestDockerComposeConfiguration:
         """Test that Celery worker depends on postgres and redis."""
         compose_path = get_project_root() / "docker-compose.yml"
         content = compose_path.read_text()
-        
+
         # Check for depends_on in celery_worker section
         worker_section = content.split("celery_worker:")[1].split("\n\n")[0] if "celery_worker:" in content else ""
         assert "depends_on:" in worker_section, "Celery worker must depend on other services"
@@ -96,7 +94,7 @@ class TestDockerComposeConfiguration:
         """Test that required volumes are defined."""
         compose_path = get_project_root() / "docker-compose.yml"
         content = compose_path.read_text()
-        
+
         assert "volumes:" in content, "docker-compose.yml must define volumes"
         assert "postgres_data:" in content, "postgres_data volume must be defined"
         assert "uploads:" in content, "uploads volume must be defined"
@@ -105,7 +103,7 @@ class TestDockerComposeConfiguration:
         """Test that environment variables are properly configured."""
         compose_path = get_project_root() / "docker-compose.yml"
         content = compose_path.read_text()
-        
+
         # Check for DATABASE_URL in backend
         assert "DATABASE_URL:" in content, "DATABASE_URL must be configured"
         assert "REDIS_URL:" in content, "REDIS_URL must be configured"

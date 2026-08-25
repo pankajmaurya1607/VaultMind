@@ -5,18 +5,19 @@ from typing import List, Optional
 import numpy as np
 
 from app.config.settings import settings
+from app.db.sync_engine import get_sync_engine
 from app.rag.embeddings.embedder import embedding_service
 
 logger = logging.getLogger("eka")
 
 try:
-    from sqlalchemy import create_engine
     from sqlalchemy import text as sa_text
     from sqlalchemy.ext.asyncio import AsyncSession
 
     _pgvector_available = True
-except Exception:
+except Exception:  # pragma: no cover - optional dependency path
     _pgvector_available = False
+    sa_text = None
     AsyncSession = None
 
 
@@ -24,23 +25,37 @@ def _build_vector_str(vector: List[float]) -> str:
     return "[" + ",".join(str(v) for v in vector) + "]"
 
 
-def _build_search_query(vector_str: str, department_ids: List[int], top_k: int):
-    dept_filter = ""
+_SEARCH_SQL_TEMPLATE = """
+    SELECT c.id, c.text, c.metadata, c.chunk_index, c.document_id,
+           1 - (c.embedding <=> CAST(:vec AS vector)) as score,
+           d.filename as original_filename
+    FROM chunks c
+    JOIN documents d ON d.id = c.document_id
+    WHERE c.embedding IS NOT NULL
+      AND 1 - (c.embedding <=> CAST(:vec AS vector)) >= :threshold
+      {dept_filter}
+    ORDER BY score DESC
+    LIMIT :top_k
+"""
+
+
+def _build_search_query(department_ids: List[int]):
+    """Parameterized similarity search. All values are bound - never interpolated."""
     if department_ids:
-        ids = ",".join(str(d) for d in department_ids)
-        dept_filter = f"AND d.department_id IN ({ids})"
-    return sa_text(f"""
-        SELECT c.id, c.text, c.metadata, c.chunk_index, c.document_id,
-               1 - (c.embedding <=> '{vector_str}'::vector) as score,
-               d.filename as original_filename
-        FROM chunks c
-        JOIN documents d ON d.id = c.document_id
-        WHERE c.embedding IS NOT NULL
-          AND 1 - (c.embedding <=> '{vector_str}'::vector) >= {settings.SIMILARITY_THRESHOLD}
-        {dept_filter}
-        ORDER BY score DESC
-        LIMIT {top_k}
-    """)
+        placeholders = ", ".join(f":d{i}" for i in range(len(department_ids)))
+        dept_filter = f"AND d.department_id IN ({placeholders})"
+    else:
+        dept_filter = ""
+        department_ids = []
+    sql = sa_text(_SEARCH_SQL_TEMPLATE.format(dept_filter=dept_filter))
+    return sql
+
+
+def _search_params(vector_str: str, department_ids: List[int], top_k: int) -> dict:
+    params = {"vec": vector_str, "threshold": settings.SIMILARITY_THRESHOLD, "top_k": top_k}
+    for i, dept_id in enumerate(department_ids or []):
+        params[f"d{i}"] = dept_id
+    return params
 
 
 def _rows_to_results(rows) -> List[dict]:
@@ -78,15 +93,8 @@ class Retriever:
 
         if _pgvector_available:
             if db is not None:
-                try:
-                    return await self._async_pgvector_search(db, query_vector, department_ids, k)
-                except Exception as e:
-                    logger.warning(f"Async PGVector search failed: {e}")
-            else:
-                try:
-                    return self._sync_pgvector_search(query_vector, department_ids, k)
-                except Exception as e:
-                    logger.warning(f"Sync PGVector search failed, falling back to local: {e}")
+                return await self._async_pgvector_search(db, query_vector, department_ids, k)
+            return self._sync_pgvector_search(query_vector, department_ids, k)
 
         return self._local_search(query_vector, department_ids, k)
 
@@ -117,12 +125,11 @@ class Retriever:
         return results[:top_k]
 
     def _sync_pgvector_search(self, query_vector: List[float], department_ids: List[int], top_k: int) -> List[dict]:
-        engine = create_engine(settings.DATABASE_URL_SYNC)
         vector_str = _build_vector_str(query_vector)
-        sql = _build_search_query(vector_str, department_ids, top_k)
+        sql = _build_search_query(department_ids)
 
-        with engine.connect() as conn:
-            rows = conn.execute(sql).fetchall()
+        with get_sync_engine().connect() as conn:
+            rows = conn.execute(sql, _search_params(vector_str, department_ids, top_k)).fetchall()
 
         return _rows_to_results(rows)
 
@@ -134,8 +141,8 @@ class Retriever:
         top_k: int,
     ) -> List[dict]:
         vector_str = _build_vector_str(query_vector)
-        sql = _build_search_query(vector_str, department_ids, top_k)
-        result = await db.execute(sql)
+        sql = _build_search_query(department_ids)
+        result = await db.execute(sql, _search_params(vector_str, department_ids, top_k))
         rows = result.fetchall()
         return _rows_to_results(rows)
 
@@ -159,23 +166,21 @@ class Retriever:
             )
 
         if _pgvector_available:
-            try:
-                self._pgvector_store(document_id, chunks, embeddings, filename, department_id)
-            except Exception as e:
-                logger.warning(f"PGVector store failed: {e}")
+            # Intentionally raises on failure so the Celery task marks the
+            # document FAILED instead of silently losing searchability.
+            self._pgvector_store(document_id, chunks, embeddings, filename, department_id)
+
+    def evict_document(self, document_id: int):
+        """Drop cached local-store entries when a document is deleted."""
+        self._local_store.pop(document_id, None)
 
     def _pgvector_store(
         self, document_id: int, chunks: List[dict], embeddings: List[List[float]], filename: str, department_id: int
     ):
-        engine = create_engine(settings.DATABASE_URL_SYNC)
-        with engine.connect() as conn:
+        sql = sa_text("UPDATE chunks SET embedding = CAST(:vec AS vector) WHERE id = :chunk_id")
+        with get_sync_engine().connect() as conn:
             for i, chunk in enumerate(chunks):
-                vec_str = _build_vector_str(embeddings[i])
-                sql = sa_text(f"""
-                    UPDATE chunks SET embedding = '{vec_str}'::vector
-                    WHERE id = {chunk["chunk_id"]}
-                """)
-                conn.execute(sql)
+                conn.execute(sql, {"vec": _build_vector_str(embeddings[i]), "chunk_id": chunk["chunk_id"]})
             conn.commit()
 
 

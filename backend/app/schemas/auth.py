@@ -6,7 +6,6 @@ class RegisterRequest(BaseModel):
     email: str
     password: str
     department_id: int
-    role_id: int = 3
 
 
 class LoginRequest(BaseModel):

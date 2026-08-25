@@ -59,3 +59,49 @@ class TestDocumentServiceUpload:
         assert result.id == 1
         assert result.status == DocumentStatus.PENDING
         task.delay.assert_called_once_with(1)
+
+
+class TestDocumentServiceGetDelete:
+    def setup_method(self):
+        self.db = AsyncMock()
+        self.service = DocumentService(self.db)
+        self.service.repo = AsyncMock()
+
+    @pytest.mark.asyncio
+    async def test_get_document_returns_doc(self):
+        doc = Document(id=1, original_filename="test.txt", file_path="/tmp/abc.txt")
+        self.service.repo.get = AsyncMock(return_value=doc)
+        result = await self.service.get_document(1)
+        assert result is doc
+        self.service.repo.get.assert_awaited_once_with(1)
+
+    @pytest.mark.asyncio
+    async def test_get_document_missing_returns_none(self):
+        self.service.repo.get = AsyncMock(return_value=None)
+        assert await self.service.get_document(99) is None
+
+    @pytest.mark.asyncio
+    async def test_delete_document_removes_row_and_file(self, tmp_path):
+        stored = tmp_path / "abc.txt"
+        stored.write_text("data")
+        doc = Document(id=1, original_filename="test.txt", file_path=str(stored))
+        self.service.repo.get = AsyncMock(return_value=doc)
+        self.service.repo.delete = AsyncMock(return_value=True)
+
+        assert await self.service.delete_document(1) is True
+        self.service.repo.delete.assert_awaited_once_with(1)
+        assert not stored.exists()
+
+    @pytest.mark.asyncio
+    async def test_delete_document_succeeds_even_if_file_missing(self, tmp_path):
+        doc = Document(id=1, original_filename="test.txt", file_path=str(tmp_path / "gone.txt"))
+        self.service.repo.get = AsyncMock(return_value=doc)
+        self.service.repo.delete = AsyncMock(return_value=True)
+
+        assert await self.service.delete_document(1) is True
+
+    @pytest.mark.asyncio
+    async def test_delete_document_missing_returns_false(self):
+        self.service.repo.get = AsyncMock(return_value=None)
+        assert await self.service.delete_document(99) is False
+        self.service.repo.delete.assert_not_awaited()

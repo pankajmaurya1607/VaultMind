@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.models.department import Department
 from app.repositories.base import BaseRepository

@@ -6,10 +6,10 @@ They test document processing, chunking, embedding, storage, and retrieval.
 All tests use pre-computed vectors to avoid external API calls.
 """
 
-import pytest
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-import numpy as np
+from unittest.mock import patch
 
+import numpy as np
+import pytest
 
 # Test markers
 pytestmark = [
@@ -18,7 +18,7 @@ pytestmark = [
 ]
 
 
-def _make_vector(dim=1536, seed=0):
+def _make_vector(dim=384, seed=0):
     rng = np.random.RandomState(seed)
     v = rng.rand(dim).astype(np.float32)
     v = v / (np.linalg.norm(v) + 1e-10)
@@ -53,16 +53,17 @@ class TestDocumentProcessingPipeline:
 
     def test_embedding_to_storage_flow(self):
         """Test that embeddings can be stored in local store."""
+        from app.rag.retriever import retriever as retriever_module
         from app.rag.retriever.retriever import Retriever
 
         retriever = Retriever()
+        with patch.object(retriever_module, "_pgvector_available", False):
+            chunks = [
+                {"chunk_index": 0, "text": "Test chunk 1", "metadata": {"source": "test1.pdf"}},
+                {"chunk_index": 1, "text": "Test chunk 2", "metadata": {"source": "test2.pdf"}},
+            ]
 
-        chunks = [
-            {"chunk_index": 0, "text": "Test chunk 1", "metadata": {"source": "test1.pdf"}},
-            {"chunk_index": 1, "text": "Test chunk 2", "metadata": {"source": "test2.pdf"}},
-        ]
-
-        retriever.store_chunks(document_id=1, chunks=chunks, filename="test.pdf", department_id=1)
+            retriever.store_chunks(document_id=1, chunks=chunks, filename="test.pdf", department_id=1)
 
         assert 1 in retriever._local_store, "Should store chunks in local store"
         assert len(retriever._local_store[1]) == 2, "Should store 2 chunks"
@@ -158,8 +159,9 @@ class TestQueryProcessingPipeline:
 
     def test_large_document_chunking_and_storage(self):
         """Test processing of large documents through chunking and storage."""
-        from app.tasks.process import chunk_text
+        from app.rag.retriever import retriever as retriever_module
         from app.rag.retriever.retriever import Retriever
+        from app.tasks.process import chunk_text
 
         retriever = Retriever()
 
@@ -172,7 +174,8 @@ class TestQueryProcessingPipeline:
             {"chunk_index": i, "text": chunk, "metadata": {"source": "large_doc.pdf"}}
             for i, chunk in enumerate(chunks)
         ]
-        retriever.store_chunks(document_id=1, chunks=chunk_dicts, filename="large_doc.pdf", department_id=1)
+        with patch.object(retriever_module, "_pgvector_available", False):
+            retriever.store_chunks(document_id=1, chunks=chunk_dicts, filename="large_doc.pdf", department_id=1)
 
         assert len(retriever._local_store[1]) == len(chunks), "Should store all chunks"
 
@@ -193,13 +196,13 @@ class TestQueryProcessingPipeline:
 
     def test_threshold_filters_irrelevant(self):
         """Test that similarity threshold filters irrelevant results."""
-        from app.rag.retriever.retriever import Retriever
         from app.config.settings import settings
+        from app.rag.retriever.retriever import Retriever
 
         retriever = Retriever()
 
-        orthogonal = np.zeros(1536, dtype=np.float32)
-        orthogonal[768] = 1.0
+        orthogonal = np.zeros(384, dtype=np.float32)
+        orthogonal[192] = 1.0
 
         retriever._local_store[1] = [{
             "chunk_index": 0,
@@ -210,7 +213,7 @@ class TestQueryProcessingPipeline:
             "department_id": 1,
         }]
 
-        query = np.zeros(1536, dtype=np.float32)
+        query = np.zeros(384, dtype=np.float32)
         query[0] = 1.0
 
         results = retriever._local_search(query, [], top_k=5)

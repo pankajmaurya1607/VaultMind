@@ -73,12 +73,11 @@ def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200) -> List[st
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
 def process_document_task(self, document_id: int):
-    from sqlalchemy import create_engine
     from sqlalchemy.orm import Session
 
-    from app.config.settings import settings
+    from app.db.sync_engine import get_sync_engine
 
-    engine = create_engine(settings.DATABASE_URL_SYNC)
+    engine = get_sync_engine()
 
     try:
         with Session(engine) as db:
