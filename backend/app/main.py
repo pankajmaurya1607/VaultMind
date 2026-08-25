@@ -11,6 +11,7 @@ from app.api.router import api_router
 from app.config.settings import settings
 from app.core.exceptions import global_exception_handler, http_exception_handler, validation_exception_handler
 from app.db.session import Base, engine
+from app.mid.csrf import CSRFMiddleware
 from app.mid.logging import LoggingMiddleware
 from app.mid.rate_limit import RateLimitMiddleware
 
@@ -45,6 +46,7 @@ app.add_middleware(
 )
 app.add_middleware(LoggingMiddleware)
 app.add_middleware(RateLimitMiddleware)
+app.add_middleware(CSRFMiddleware)
 
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)

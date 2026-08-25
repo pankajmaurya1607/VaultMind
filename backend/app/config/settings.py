@@ -68,3 +68,14 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+_INSECURE_DEFAULT_KEY = "change-me-in-production"
+
+if settings.ENVIRONMENT not in ("development", "testing") and (
+    not settings.SECRET_KEY or settings.SECRET_KEY == _INSECURE_DEFAULT_KEY or len(settings.SECRET_KEY) < 32
+):
+    raise RuntimeError(
+        "SECRET_KEY must be set to a strong random value (>= 32 chars) when "
+        "ENVIRONMENT is not 'development' or 'testing'. "
+        "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+    )

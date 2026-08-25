@@ -24,7 +24,15 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    # exc.errors() can contain non-serializable objects in ctx (e.g. ValueError
+    # instances raised by custom pydantic validators) - sanitize them.
+    errors = []
+    for error in exc.errors():
+        clean = {k: v for k, v in error.items() if k != "ctx"}
+        if "ctx" in error and isinstance(error["ctx"], dict):
+            clean["ctx"] = {k: str(v) for k, v in error["ctx"].items()}
+        errors.append(clean)
     return JSONResponse(
         status_code=422,
-        content={"detail": exc.errors(), "body": exc.body},
+        content={"detail": errors, "body": exc.body},
     )

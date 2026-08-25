@@ -37,3 +37,24 @@ def update_metrics(self):
     except Exception as exc:
         logger.error(f"Metrics update failed: {exc}")
         raise self.retry(exc=exc, countdown=60)
+
+
+@shared_task(bind=True, max_retries=3)
+def prune_blacklisted_tokens(self):
+    """Daily cleanup: drop revoked-token rows older than the refresh lifetime."""
+    from sqlalchemy.orm import Session
+
+    from app.config.settings import settings
+    from app.db.sync_engine import get_sync_engine
+    from app.repositories.auth import AuthRepository
+
+    engine = get_sync_engine()
+    try:
+        with Session(engine) as db:
+            pruned = AuthRepository(db).prune_expired(settings.REFRESH_TOKEN_EXPIRE_DAYS)
+            db.commit()
+            if pruned:
+                logger.info(f"Pruned {pruned} expired blacklisted tokens")
+    except Exception as exc:
+        logger.error(f"Failed to prune blacklisted tokens: {exc}")
+        raise self.retry(exc=exc, countdown=300)

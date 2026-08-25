@@ -50,7 +50,7 @@ class AuthService:
         refresh_token = create_refresh_token({"sub": str(user.id)})
         return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
-    async def refresh(self, refresh_token: str) -> dict:
+    async def refresh(self, refresh_token: str, current_access_token: str | None = None) -> dict:
         payload = decode_token(refresh_token)
         if payload is None or payload.get("type") != "refresh":
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
@@ -64,8 +64,15 @@ class AuthService:
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
+        # Rotate: invalidate both the presented refresh token and any access
+        # token issued in the same session (cookie flow supplies it).
         if jti:
             await self.auth_repo.blacklist_token(jti)
+        if current_access_token:
+            access_payload = decode_token(current_access_token)
+            access_jti = access_payload.get("jti") if access_payload else None
+            if access_jti:
+                await self.auth_repo.blacklist_token(access_jti)
 
         access_token = create_access_token({"sub": str(user.id)})
         new_refresh_token = create_refresh_token({"sub": str(user.id)})

@@ -41,7 +41,7 @@ async def test_register_duplicate_email(client):
         json={
             "name": "User One",
             "email": "dupe@example.com",
-            "password": "Pass123",
+            "password": "StrongPass123",
             "department_id": 1,
             "role_id": 3,
         },
@@ -51,7 +51,7 @@ async def test_register_duplicate_email(client):
         json={
             "name": "User Two",
             "email": "dupe@example.com",
-            "password": "Pass456",
+            "password": "StrongPass456",
             "department_id": 1,
             "role_id": 3,
         },

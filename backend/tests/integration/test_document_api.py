@@ -8,7 +8,7 @@ async def get_auth_token(client: AsyncClient) -> str:
         json={
             "name": "Test User",
             "email": "doc_test@example.com",
-            "password": "Pass123",
+            "password": "StrongPass123",
             "department_id": 1,
             "role_id": 3,
         },

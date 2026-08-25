@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.schedules import crontab
 
 from app.config.settings import settings
 
@@ -31,6 +32,10 @@ celery_app.conf.update(
         "update-metrics": {
             "task": "app.tasks.monitor.update_metrics",
             "schedule": 60.0,
+        },
+        "prune-blacklisted-tokens": {
+            "task": "app.tasks.monitor.prune_blacklisted_tokens",
+            "schedule": crontab(hour=3, minute=0),
         },
     },
 )
