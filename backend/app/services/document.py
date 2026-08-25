@@ -110,9 +110,17 @@ class DocumentService:
         """Get documents uploaded by user, filtered to their department."""
         return await self.repo.get_by_user_with_dept_filter(user_id, department_ids, skip, limit)
 
+    async def get_user_documents_with_total(
+        self, user_id: int, department_ids: list[int], skip: int = 0, limit: int = 100
+    ) -> tuple[list[Document], int]:
+        return await self.repo.get_user_with_total(user_id, department_ids, skip, limit)
+
     async def get_all_documents(self, skip: int = 0, limit: int = 100) -> list[Document]:
         """Get all documents (Admin only)."""
         return await self.repo.list(skip, limit)
+
+    async def get_all_documents_with_total(self, skip: int = 0, limit: int = 100) -> tuple[list[Document], int]:
+        return await self.repo.get_all_with_total(skip, limit)
 
     async def get_document(self, document_id: int) -> Document | None:
         """Get a single document by id (access control enforced by caller)."""
@@ -124,9 +132,15 @@ class DocumentService:
         if document is None:
             return False
         deleted = await self.repo.delete(document_id)
-        if deleted and document.file_path and os.path.exists(document.file_path):
-            try:
-                os.remove(document.file_path)
-            except OSError as exc:
-                logger.warning("Failed to remove file %s for document %s: %s", document.file_path, document_id, exc)
+        if deleted:
+            # Evict any cached fallback-store entries so deleted docs
+            # disappear from search immediately.
+            from app.rag.retriever.retriever import retriever
+
+            retriever.evict_document(document_id)
+            if document.file_path and os.path.exists(document.file_path):
+                try:
+                    os.remove(document.file_path)
+                except OSError as exc:
+                    logger.warning("Failed to remove file %s for document %s: %s", document.file_path, document_id, exc)
         return deleted

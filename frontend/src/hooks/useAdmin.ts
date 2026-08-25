@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../lib/api"
-import type { User, AuditLog, SystemMetrics } from "../types"
+import type { User, AuditLog, SystemMetrics, Paginated } from "../types"
 
 export function useAdminUsers(pagination?: { skip: number; limit: number }) {
   const skip = pagination?.skip ?? 0
   const limit = pagination?.limit ?? 100
-  return useQuery<User[]>({
+  return useQuery<Paginated<User>>({
     queryKey: ["admin", "users", skip, limit],
     queryFn: async () => {
       const { data } = await api.get(`/users?skip=${skip}&limit=${limit}`)
@@ -41,7 +41,7 @@ export function useCreateUser() {
 }
 
 export function useAdminAuditLogs(limit = 200) {
-  return useQuery<AuditLog[]>({
+  return useQuery<Paginated<AuditLog>>({
     queryKey: ["admin", "audit", limit],
     queryFn: async () => {
       const { data } = await api.get(`/admin/audit?limit=${limit}`)

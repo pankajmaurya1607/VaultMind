@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../lib/api"
-import type { Document, DocumentUploadResponse } from "../types"
+import type { Document, DocumentUploadResponse, Paginated } from "../types"
 
 export function useDocuments(refetchMs?: number, pagination?: { skip: number; limit: number }) {
   const skip = pagination?.skip ?? 0
   const limit = pagination?.limit ?? 100
-  return useQuery<Document[]>({
+  return useQuery<Paginated<Document>>({
     queryKey: ["documents", skip, limit],
     queryFn: async () => {
       const { data } = await api.get(`/documents?skip=${skip}&limit=${limit}`)
@@ -13,7 +13,7 @@ export function useDocuments(refetchMs?: number, pagination?: { skip: number; li
     },
     refetchInterval: (query) => {
       if (refetchMs == null) return false
-      const docs = query.state.data
+      const docs = query.state.data?.items
       const pending = docs?.some((d) => d.status === "pending" || d.status === "processing")
       return pending ? refetchMs : false
     },

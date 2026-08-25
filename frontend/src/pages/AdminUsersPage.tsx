@@ -62,8 +62,8 @@ export default function AdminUsersPage() {
       toast.error("All fields are required")
       return
     }
-    if (form.password.length < 6) {
-      toast.error("Password must be at least 6 characters")
+    if (form.password.length < 8) {
+      toast.error("Password must be at least 8 characters")
       return
     }
     try {
@@ -77,7 +77,7 @@ export default function AdminUsersPage() {
     }
   }
 
-  const hasMore = users ? users.length === limit : false
+  const hasMore = users ? users.items.length < users.total : false
 
   return (
     <div className="mx-auto max-w-6xl p-6 animate-fade-in">
@@ -87,7 +87,7 @@ export default function AdminUsersPage() {
             <Users className="h-6 w-6 text-primary" /> Users
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {users ? `${users.length} on page ${page + 1}` : "Loading..."} · Manage roles, departments, and create users
+            {users ? `${users.total} total · page ${page + 1}` : "Loading..."} · Manage roles, departments, and create users
           </p>
         </div>
         <Button onClick={() => setCreateOpen(true)} className="gap-2">
@@ -124,8 +124,8 @@ export default function AdminUsersPage() {
             </div>
           )}
           {error && <div className="mx-6 my-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">Failed to load users</div>}
-          {users && users.length === 0 && <div className="py-12 text-center text-sm text-muted-foreground">No users found.</div>}
-          {users && users.length > 0 && (
+          {users && users.items.length === 0 && <div className="py-12 text-center text-sm text-muted-foreground">No users found.</div>}
+          {users && users.items.length > 0 && (
             <>
               <div className="overflow-x-auto">
                 <Table>
@@ -140,7 +140,7 @@ export default function AdminUsersPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users.map((u) => {
+                    {users.items.map((u) => {
                       const editing = editingId === u.id
                       return (
                         <TableRow key={u.id}>

@@ -6,6 +6,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.rbac.dependencies import require_admin
 from app.repositories.user import UserRepository
+from app.schemas.pagination import Paginated
 from app.schemas.user import UserResponse, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -27,7 +28,7 @@ async def get_me(current_user: User = Depends(get_current_user), db: AsyncSessio
     )
 
 
-@router.get("", response_model=list[UserResponse])
+@router.get("", response_model=Paginated[UserResponse])
 async def list_users(
     skip: int = 0,
     limit: int = 100,
@@ -35,20 +36,25 @@ async def list_users(
     current_user: User = Depends(require_admin),
 ):
     repo = UserRepository(db)
-    users = await repo.list_with_relations(skip, limit)
-    return [
-        UserResponse(
-            id=u.id,
-            name=u.name,
-            email=u.email,
-            department_id=u.department_id,
-            department_name=u.department.name if u.department else None,
-            role_id=u.role_id,
-            role_name=u.role.name if u.role else None,
-            created_at=u.created_at,
-        )
-        for u in users
-    ]
+    users, total = await repo.list_with_total(skip, limit)
+    return Paginated[UserResponse](
+        items=[
+            UserResponse(
+                id=u.id,
+                name=u.name,
+                email=u.email,
+                department_id=u.department_id,
+                department_name=u.department.name if u.department else None,
+                role_id=u.role_id,
+                role_name=u.role.name if u.role else None,
+                created_at=u.created_at,
+            )
+            for u in users
+        ],
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.patch("/{user_id}", response_model=UserResponse)

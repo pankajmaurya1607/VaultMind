@@ -24,3 +24,8 @@ class UserRepository(BaseRepository[User]):
             select(User).options(joinedload(User.role), joinedload(User.department)).offset(skip).limit(limit)
         )
         return list(result.unique().scalars().all())
+
+    async def list_with_total(self, skip: int = 0, limit: int = 100) -> tuple[list[User], int]:
+        total = await self.count()
+        users = await self.list_with_relations(skip, limit)
+        return users, total

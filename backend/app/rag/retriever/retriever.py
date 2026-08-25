@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from typing import List, Optional
@@ -89,7 +90,8 @@ class Retriever:
         db: Optional[AsyncSession] = None,
     ) -> List[dict]:
         k = top_k or settings.TOP_K
-        query_vector = embedding_service.embed_query(query)
+        # SentenceTransformer.encode is CPU-bound sync code - offload it.
+        query_vector = await asyncio.to_thread(embedding_service.embed_query, query)
 
         if _pgvector_available:
             if db is not None:

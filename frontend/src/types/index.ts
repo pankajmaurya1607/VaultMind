@@ -134,3 +134,9 @@ export interface UserUpdate {
   department_id?: number
   role_id?: number
 }
+export interface Paginated<T> {
+  items: T[]
+  total: number
+  skip: number
+  limit: number
+}

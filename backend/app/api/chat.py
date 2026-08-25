@@ -36,15 +36,15 @@ async def chat_history(
     current_user: User = Depends(get_current_user),
 ):
     service = ChatService(db)
-    sessions = await service.get_history(current_user.id)
+    sessions = await service.get_history_with_counts(current_user.id)
     return [
         ChatHistoryResponse(
             id=s.id,
             title=s.title,
             created_at=s.created_at,
-            message_count=len(s.messages) if hasattr(s, "messages") and s.messages else 0,
+            message_count=count,
         )
-        for s in sessions
+        for s, count in sessions
     ]
 
 

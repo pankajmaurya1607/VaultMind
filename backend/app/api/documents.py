@@ -6,6 +6,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.rbac.dependencies import get_effective_department_ids, require_admin
 from app.schemas.document import DocumentResponse, DocumentUploadResponse
+from app.schemas.pagination import Paginated
 from app.services.audit import audit_event
 from app.services.document import DocumentService
 
@@ -34,7 +35,7 @@ async def upload_document(
     return DocumentUploadResponse(id=doc.id, filename=doc.original_filename, status=doc.status.value)
 
 
-@router.get("", response_model=list[DocumentResponse])
+@router.get("", response_model=Paginated[DocumentResponse])
 async def list_documents(
     skip: int = 0,
     limit: int = 100,
@@ -44,24 +45,29 @@ async def list_documents(
     service = DocumentService(db)
     dept_ids = get_effective_department_ids(current_user)
     if current_user.role.name == "Admin":
-        docs = await service.get_all_documents(skip, limit)
+        docs, total = await service.get_all_documents_with_total(skip, limit)
     else:
-        docs = await service.get_user_documents(current_user.id, dept_ids, skip, limit)
-    return [
-        DocumentResponse(
-            id=d.id,
-            original_filename=d.original_filename,
-            file_size=d.file_size,
-            mime_type=d.mime_type,
-            status=d.status.value if hasattr(d.status, "value") else d.status,
-            uploaded_by=d.uploaded_by,
-            department_id=d.department_id,
-            chunk_count=d.chunk_count,
-            error_message=d.error_message,
-            created_at=d.created_at,
-        )
-        for d in docs
-    ]
+        docs, total = await service.get_user_documents_with_total(current_user.id, dept_ids, skip, limit)
+    return Paginated[DocumentResponse](
+        items=[
+            DocumentResponse(
+                id=d.id,
+                original_filename=d.original_filename,
+                file_size=d.file_size,
+                mime_type=d.mime_type,
+                status=d.status.value if hasattr(d.status, "value") else d.status,
+                uploaded_by=d.uploaded_by,
+                department_id=d.department_id,
+                chunk_count=d.chunk_count,
+                error_message=d.error_message,
+                created_at=d.created_at,
+            )
+            for d in docs
+        ],
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)

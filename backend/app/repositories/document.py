@@ -24,6 +24,29 @@ class DocumentRepository(BaseRepository[Document]):
         )
         return list(result.scalars().all())
 
+    async def count_user_with_dept_filter(self, user_id: int, department_ids: list[int]) -> int:
+        if not department_ids:
+            return 0
+        result = await self.db.execute(
+            select(func.count())
+            .select_from(Document)
+            .where(Document.uploaded_by == user_id)
+            .where(Document.department_id.in_(department_ids))
+        )
+        return result.scalar()
+
+    async def get_all_with_total(self, skip: int, limit: int) -> tuple[list[Document], int]:
+        total = await self.count()
+        docs = await self.list(skip, limit)
+        return docs, total
+
+    async def get_user_with_total(
+        self, user_id: int, department_ids: list[int], skip: int, limit: int
+    ) -> tuple[list[Document], int]:
+        docs = await self.get_by_user_with_dept_filter(user_id, department_ids, skip, limit)
+        total = await self.count_user_with_dept_filter(user_id, department_ids)
+        return docs, total
+
     async def get_by_department(self, department_id: int, skip: int = 0, limit: int = 100) -> list[Document]:
         result = await self.db.execute(
             select(Document).where(Document.department_id == department_id).offset(skip).limit(limit)

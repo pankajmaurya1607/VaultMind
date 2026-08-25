@@ -18,7 +18,7 @@ export default function AdminAuditPage() {
         <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
           <ScrollText className="h-6 w-6 text-primary" /> Audit Log
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">{logs ? `${logs.length} event${logs.length !== 1 ? "s" : ""}` : "Loading..."} · Full visibility into who did what</p>
+        <p className="text-sm text-muted-foreground mt-1">{logs ? `${logs.total} event${logs.total !== 1 ? "s" : ""}` : "Loading..."} · Full visibility into who did what</p>
       </div>
 
       <Card>
@@ -35,8 +35,8 @@ export default function AdminAuditPage() {
             </div>
           )}
           {error && <div className="mx-6 my-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">Failed to load audit logs</div>}
-          {logs && logs.length === 0 && !isLoading && <div className="py-12 text-center text-sm text-muted-foreground">No audit events yet.</div>}
-          {logs && logs.length > 0 && (
+          {logs && logs.items.length === 0 && !isLoading && <div className="py-12 text-center text-sm text-muted-foreground">No audit events yet.</div>}
+          {logs && logs.items.length > 0 && (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -50,7 +50,7 @@ export default function AdminAuditPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {logs.map((log) => (
+                  {logs.items.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{formatDate(log.created_at)}</TableCell>
                       <TableCell className="max-w-[160px] truncate text-sm" title={log.user_email || ""}>

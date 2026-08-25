@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 
@@ -36,7 +37,8 @@ class ChatService:
         record_search_latency(search_time)
 
         llm_start = time.time()
-        answer, sources, confidence = self.generator.generate(question, documents)
+        # Sync LLM SDK call - offload so the event loop isn't blocked.
+        answer, sources, confidence = await asyncio.to_thread(self.generator.generate, question, documents)
         llm_time = (time.time() - llm_start) * 1000
         LLM_LATENCY.observe(llm_time)
         CHAT_LATENCY.observe(search_time + llm_time)
@@ -87,6 +89,9 @@ class ChatService:
     async def get_history(self, user_id: int) -> list[ChatSession]:
         sessions = await self.session_repo.get_by_user(user_id)
         return sessions
+
+    async def get_history_with_counts(self, user_id: int) -> list[tuple[ChatSession, int]]:
+        return await self.session_repo.get_by_user_with_message_counts(user_id)
 
     async def get_messages(self, session_id: int, user_id: int) -> list:
         session = await self.session_repo.get(session_id)

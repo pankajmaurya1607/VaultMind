@@ -52,12 +52,15 @@ export default function DocumentsPage() {
   const [detailId, setDetailId] = useState<number | null>(null)
   const { data: detail, isFetching: detailFetching } = useDocument(detailId)
 
+  const items = useMemo(() => documents?.items ?? [], [documents])
+  const total = documents?.total ?? 0
+
   const filtered = useMemo(() => {
-    if (!documents) return []
-    if (!search.trim()) return documents
+    if (!items) return []
+    if (!search.trim()) return items
     const q = search.toLowerCase()
-    return documents.filter((d) => d.original_filename.toLowerCase().includes(q) || (deptMap.get(d.department_id || 0) || "").toLowerCase().includes(q))
-  }, [documents, search, deptMap])
+    return items.filter((d) => d.original_filename.toLowerCase().includes(q) || (deptMap.get(d.department_id || 0) || "").toLowerCase().includes(q))
+  }, [items, search, deptMap])
 
   const handleDelete = async (id: number, name: string) => {
     if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return
@@ -69,9 +72,9 @@ export default function DocumentsPage() {
     }
   }
 
-  const listDoc = detailId !== null ? documents?.find((d) => d.id === detailId) : undefined
+  const listDoc = detailId !== null ? items.find((d) => d.id === detailId) : undefined
   const doc = detail ?? listDoc
-  const hasMore = documents ? documents.length === limit : false
+  const hasMore = skip + items.length < total
   const canPrev = page > 0
 
   return (
@@ -80,9 +83,9 @@ export default function DocumentsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Documents</h1>
           <p className="text-sm text-muted-foreground">
-            {documents ? `${documents.length} on page ${page + 1}` : "Loading..."}
-            {search && filtered.length !== documents?.length && ` · ${filtered.length} filtered`}
-            {documents?.some((d) => d.status === "pending" || d.status === "processing") && (
+            {documents ? `${total} total · page ${page + 1}` : "Loading..."}
+            {search && filtered.length !== total && ` · ${filtered.length} filtered`}
+            {items.some((d) => d.status === "pending" || d.status === "processing") && (
               <span className="ml-2 inline-flex items-center gap-1 text-primary">
                 <Loader2 className="h-3 w-3 animate-spin" /> processing...
               </span>

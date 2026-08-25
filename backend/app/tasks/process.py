@@ -99,7 +99,16 @@ def process_document_task(self, document_id: int):
                 return
 
             raw_chunks = chunk_text(text)
+
+            # Idempotency: purge chunks from a previous partial run before
+            # inserting again so retries never duplicate embeddings.
+            from sqlalchemy import delete as sa_delete
+
             from app.models.chunk import Chunk
+
+            await_cleanup = db.execute(sa_delete(Chunk).where(Chunk.document_id == doc.id))
+            db.commit()
+            logger.debug(f"Purged {await_cleanup.rowcount} stale chunks for document {document_id}")
 
             chunk_objects = []
             for i, chunk_text_content in enumerate(raw_chunks):
