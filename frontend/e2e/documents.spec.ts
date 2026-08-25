@@ -30,10 +30,15 @@ async function mockAuthenticated(page: import("@playwright/test").Page) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify([
-          { id: 1, original_filename: "handbook.pdf", file_size: 102400, mime_type: "application/pdf", status: "ready", uploaded_by: 1, department_id: 1, chunk_count: 12, error_message: null, created_at: new Date().toISOString() },
-          { id: 2, original_filename: "report.csv", file_size: 20480, mime_type: "text/csv", status: "processing", uploaded_by: 1, department_id: 1, chunk_count: 0, error_message: null, created_at: new Date().toISOString() },
-        ]),
+        body: JSON.stringify({
+          items: [
+            { id: 1, original_filename: "handbook.pdf", file_size: 102400, mime_type: "application/pdf", status: "ready", uploaded_by: 1, department_id: 1, chunk_count: 12, error_message: null, created_at: new Date().toISOString() },
+            { id: 2, original_filename: "report.csv", file_size: 20480, mime_type: "text/csv", status: "processing", uploaded_by: 1, department_id: 1, chunk_count: 0, error_message: null, created_at: new Date().toISOString() },
+          ],
+          total: 2,
+          skip: 0,
+          limit: 100,
+        }),
       })
     } else if (route.request().method() === "POST") {
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: 3, filename: "new.pdf", status: "pending", message: "Uploaded" }) })
@@ -45,10 +50,6 @@ async function mockAuthenticated(page: import("@playwright/test").Page) {
 
 test.describe("Documents", () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem("access_token", "mock_access")
-      localStorage.setItem("refresh_token", "mock_refresh")
-    })
     await mockAuthenticated(page)
     await page.goto("/documents")
   })

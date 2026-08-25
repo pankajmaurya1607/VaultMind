@@ -12,7 +12,7 @@ import { Loader2 } from "lucide-react"
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address").min(1, "Email is required"),
-  password: z.string().min(1, "Password is required").min(6, "Password must be at least 6 characters"),
+  password: z.string().min(1, "Password is required"),
 })
 
 type LoginValues = z.infer<typeof loginSchema>
@@ -26,12 +26,9 @@ export default function LoginPage() {
     defaultValues: { email: "", password: "" },
   })
 
-  const rememberMe = localStorage.getItem("remember_me") === "true"
-
   const onSubmit = async (values: LoginValues) => {
     try {
       await login(values)
-      localStorage.setItem("remember_me", "true")
       toast.success("Welcome back")
       navigate("/dashboard")
     } catch (err: unknown) {
@@ -123,24 +120,6 @@ export default function LoginPage() {
                   )}
                 />
 
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center cursor-pointer select-none">
-                    <Input
-                      type="checkbox"
-                  checked={rememberMe}
-                    onChange={() => localStorage.setItem("remember_me", String(!rememberMe))}
-                    className="h-4 w-4 rounded border cursor-pointer accent-primary"
-                  />{" "}
-                    Remember me
-                  </label>
-                  <a
-                    href="/reset-password"
-                    className="text-sm text-primary hover:text-primary/80 transition-colors"
-                  >
-                    Forgot password?
-                  </a>
-                </div>
-
                 <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
                   {form.formState.isSubmitting ? (
                     <>
@@ -161,9 +140,6 @@ export default function LoginPage() {
           <Link to="/register" className="text-primary hover:text-primary/80 transition-colors font-medium">
             Create one
           </Link>
-        </p>
-        <p className="text-center text-xs text-muted-foreground/60 mt-6">
-          Demo: admin@eka.com / admin123
         </p>
       </div>
     </div>

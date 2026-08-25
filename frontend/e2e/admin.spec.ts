@@ -19,10 +19,15 @@ async function mockAdmin(page: import("@playwright/test").Page) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify([
-          { id: 1, name: "Admin User", email: "admin@eka.com", department_id: 1, department_name: "Engineering", role_id: 1, role_name: "Admin", created_at: new Date().toISOString() },
-          { id: 2, name: "Jane Doe", email: "jane@company.com", department_id: 1, department_name: "Engineering", role_id: 3, role_name: "Employee", created_at: new Date().toISOString() },
-        ]),
+        body: JSON.stringify({
+          items: [
+            { id: 1, name: "Admin User", email: "admin@eka.com", department_id: 1, department_name: "Engineering", role_id: 1, role_name: "Admin", created_at: new Date().toISOString() },
+            { id: 2, name: "Jane Doe", email: "jane@company.com", department_id: 1, department_name: "Engineering", role_id: 3, role_name: "Employee", created_at: new Date().toISOString() },
+          ],
+          total: 2,
+          skip: 0,
+          limit: 100,
+        }),
       })
     } else {
       await route.continue()
@@ -54,17 +59,18 @@ async function mockAdmin(page: import("@playwright/test").Page) {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify([{ id: 1, user_email: "admin@eka.com", action: "login", resource: "auth", details: null, ip_address: "127.0.0.1", success: 1, created_at: new Date().toISOString() }]),
+      body: JSON.stringify({
+        items: [{ id: 1, user_email: "admin@eka.com", action: "login", resource: "auth", details: null, ip_address: "127.0.0.1", success: 1, created_at: new Date().toISOString() }],
+        total: 1,
+        skip: 0,
+        limit: 200,
+      }),
     })
   })
 }
 
 test.describe("Admin pages", () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem("access_token", "mock_access")
-      localStorage.setItem("refresh_token", "mock_refresh")
-    })
     await mockAdmin(page)
   })
 

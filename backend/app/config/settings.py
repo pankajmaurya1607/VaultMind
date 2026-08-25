@@ -63,7 +63,11 @@ class Settings(BaseSettings):
     TRUST_PROXY_HEADERS: bool = False
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:5174",
+    ]
 
     model_config = {"env_file": ".env", "case_sensitive": True}
 

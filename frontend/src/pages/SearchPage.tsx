@@ -153,7 +153,16 @@ export default function SearchPage() {
                 <Card
                   key={`${r.document_id}-${r.chunk_index}`}
                   className="cursor-pointer transition-colors hover:border-primary/20"
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={isExpanded}
                   onClick={() => toggleExpand(i)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      toggleExpand(i)
+                    }
+                  }}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between gap-3 mb-2">

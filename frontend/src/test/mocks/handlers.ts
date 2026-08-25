@@ -15,6 +15,18 @@ export const handlers = [
     return HttpResponse.json({ detail: "Invalid credentials" }, { status: 401 })
   }),
 
+  http.post(`${API}/auth/refresh`, () => {
+    return HttpResponse.json({
+      access_token: "mock_refreshed_access",
+      refresh_token: "mock_refreshed_refresh",
+      token_type: "bearer",
+    })
+  }),
+
+  http.post(`${API}/auth/logout`, () => {
+    return HttpResponse.json({ message: "Logged out successfully" })
+  }),
+
   http.post(`${API}/auth/register`, async () => {
     return HttpResponse.json({
       access_token: "mock_access",
@@ -37,14 +49,20 @@ export const handlers = [
   }),
 
   http.get(`${API}/users`, () => {
-    return HttpResponse.json([
-      { id: 1, name: "Admin User", email: "admin@eka.com", department_id: 1, department_name: "Engineering", role_id: 1, role_name: "Admin", created_at: new Date().toISOString() },
-      { id: 2, name: "Jane Doe", email: "jane@company.com", department_id: 1, department_name: "Engineering", role_id: 3, role_name: "Employee", created_at: new Date().toISOString() },
-    ])
+    return HttpResponse.json({
+      items: [
+        { id: 1, name: "Admin User", email: "admin@eka.com", department_id: 1, department_name: "Engineering", role_id: 1, role_name: "Admin", created_at: new Date().toISOString() },
+        { id: 2, name: "Jane Doe", email: "jane@company.com", department_id: 1, department_name: "Engineering", role_id: 3, role_name: "Employee", created_at: new Date().toISOString() },
+      ],
+      total: 2,
+      skip: 0,
+      limit: 100,
+    })
   }),
 
-  http.patch(`${API}/users/:id`, async ({ params }) => {
-    return HttpResponse.json({ id: Number(params.id), name: "Updated", email: "updated@company.com", department_id: 1, department_name: "Engineering", role_id: 2, role_name: "Manager", created_at: new Date().toISOString() })
+  http.patch(`${API}/users/:id`, async ({ params, request }) => {
+    const updates = (await request.json()) as Partial<{ name: string; role_id: number; department_id: number }>
+    return HttpResponse.json({ id: Number(params.id), name: updates.name ?? "Updated", email: "updated@company.com", department_id: updates.department_id ?? 1, department_name: "Engineering", role_id: updates.role_id ?? 2, role_name: "Manager", created_at: new Date().toISOString() })
   }),
 
   http.get(`${API}/departments`, () => {
@@ -64,32 +82,37 @@ export const handlers = [
   }),
 
   http.get(`${API}/documents`, () => {
-    return HttpResponse.json([
-      {
-        id: 1,
-        original_filename: "handbook.pdf",
-        file_size: 102400,
-        mime_type: "application/pdf",
-        status: "ready",
-        uploaded_by: 1,
-        department_id: 1,
-        chunk_count: 12,
-        error_message: null,
-        created_at: new Date().toISOString(),
-      },
-      {
-        id: 2,
-        original_filename: "report.csv",
-        file_size: 20480,
-        mime_type: "text/csv",
-        status: "processing",
-        uploaded_by: 1,
-        department_id: 1,
-        chunk_count: 0,
-        error_message: null,
-        created_at: new Date().toISOString(),
-      },
-    ])
+    return HttpResponse.json({
+      items: [
+        {
+          id: 1,
+          original_filename: "handbook.pdf",
+          file_size: 102400,
+          mime_type: "application/pdf",
+          status: "ready",
+          uploaded_by: 1,
+          department_id: 1,
+          chunk_count: 12,
+          error_message: null,
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: 2,
+          original_filename: "report.csv",
+          file_size: 20480,
+          mime_type: "text/csv",
+          status: "processing",
+          uploaded_by: 1,
+          department_id: 1,
+          chunk_count: 0,
+          error_message: null,
+          created_at: new Date().toISOString(),
+        },
+      ],
+      total: 2,
+      skip: 0,
+      limit: 100,
+    })
   }),
 
   http.get(`${API}/documents/:id`, ({ params }) => {
@@ -176,8 +199,17 @@ export const handlers = [
   }),
 
   http.get(`${API}/admin/audit`, () => {
-    return HttpResponse.json([
-      { id: 1, user_email: "admin@eka.com", action: "login", resource: "auth", details: null, ip_address: "127.0.0.1", success: 1, created_at: new Date().toISOString() },
-    ])
+    return HttpResponse.json({
+      items: [
+        { id: 1, user_email: "admin@eka.com", action: "login", resource: "auth", details: null, ip_address: "127.0.0.1", success: 1, created_at: new Date().toISOString() },
+      ],
+      total: 1,
+      skip: 0,
+      limit: 200,
+    })
+  }),
+
+  http.get("*/health", () => {
+    return HttpResponse.json({ status: "healthy", service: "Enterprise Knowledge Assistant", version: "1.0.0" })
   }),
 ]

@@ -88,6 +88,9 @@ export default function UploadDialog({ open, onOpenChange }: { open: boolean; on
 
         <div className="space-y-4 py-2">
           <div
+            role="button"
+            tabIndex={0}
+            aria-label="Upload file: drop here or browse"
             onDragOver={(e) => {
               e.preventDefault()
               setDragOver(true)
@@ -95,7 +98,13 @@ export default function UploadDialog({ open, onOpenChange }: { open: boolean; on
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
             onClick={() => inputRef.current?.click()}
-            className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center cursor-pointer transition-colors ${
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                inputRef.current?.click()
+              }
+            }}
+            className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-accent"
             }`}
           >

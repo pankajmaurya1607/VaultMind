@@ -182,7 +182,15 @@ export default function DocumentsPage() {
                       <TableRow
                         key={d.id}
                         className="cursor-pointer"
+                        tabIndex={0}
+                        aria-label={`View details for ${d.original_filename}`}
                         onClick={() => setDetailId(d.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault()
+                            setDetailId(d.id)
+                          }
+                        }}
                       >
                         <TableCell className="font-medium max-w-[240px]">
                           <div className="flex items-center gap-2 truncate">

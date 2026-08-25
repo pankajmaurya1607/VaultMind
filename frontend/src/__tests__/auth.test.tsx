@@ -55,7 +55,6 @@ describe("LoginPage", () => {
     await user.type(screen.getByLabelText(/password/i), "admin123")
     await user.click(screen.getByRole("button", { name: /sign in/i }))
     await waitFor(() => expect(screen.getByText("Dashboard")).toBeInTheDocument(), { timeout: 3000 })
-    expect(localStorage.getItem("access_token")).toBe("mock_access")
   })
 
   it("shows error on invalid credentials", async () => {
@@ -90,14 +89,29 @@ describe("RegisterPage", () => {
 })
 
 describe("Auth API interceptor", () => {
-  it("adds Authorization header when token exists", async () => {
-    localStorage.setItem("access_token", "test_token")
-    const config = { headers: {} as Record<string, string> } as never
-    // simulate interceptor
-    const token = localStorage.getItem("access_token")
-    if (token) (config.headers as Record<string,string>).Authorization = `Bearer ${token}`
-    expect((config.headers as Record<string,string>).Authorization).toBe("Bearer test_token")
-    localStorage.clear()
+  it("sends cookies and retries through refresh on 401 (single-flight)", async () => {
+    // Real interceptor path: MSW returns 401 once, refresh succeeds, retry passes.
+    const { server } = await import("@/test/mocks/server")
+    const { http, HttpResponse } = await import("msw")
+
+    let secretCalls = 0
+    let refreshCalls = 0
+    server.use(
+      http.get("http://localhost:8000/api/v1/secure", () => {
+        secretCalls += 1
+        if (secretCalls === 1) return HttpResponse.json({ detail: "expired" }, { status: 401 })
+        return HttpResponse.json({ ok: true })
+      }),
+      http.post("http://localhost:8000/api/v1/auth/refresh", () => {
+        refreshCalls += 1
+        return HttpResponse.json({ access_token: "new", token_type: "bearer" })
+      }),
+    )
+
+    const res = await api.get("/secure")
+    expect(res.data).toEqual({ ok: true })
+    expect(secretCalls).toBe(2)
+    expect(refreshCalls).toBe(1)
   })
 
   it("isAdmin utility", async () => {

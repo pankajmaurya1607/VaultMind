@@ -18,10 +18,6 @@ async function mockAdmin(page: import("@playwright/test").Page) {
 
 test.describe("Departments", () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem("access_token", "mock_access")
-      localStorage.setItem("refresh_token", "mock_refresh")
-    })
     await mockAdmin(page)
   })
 

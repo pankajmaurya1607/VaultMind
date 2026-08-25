@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import api from "@/lib/api"
+import api, { API_ORIGIN } from "@/lib/api"
 
 export interface HealthResponse {
   status: string
@@ -11,7 +11,8 @@ export function useHealth() {
   return useQuery<HealthResponse>({
     queryKey: ["health"],
     queryFn: async () => {
-      const { data } = await api.get("/health", { baseURL: "http://localhost:8000" })
+      // /health lives at the backend root, not under /api/v1.
+      const { data } = await api.get("/health", { baseURL: API_ORIGIN })
       return data
     },
     retry: 1,

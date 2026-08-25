@@ -30,10 +30,6 @@ async function mockAuth(page: import("@playwright/test").Page) {
 
 test.describe("Search", () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem("access_token", "mock_access")
-      localStorage.setItem("refresh_token", "mock_refresh")
-    })
     await mockAuth(page)
   })
 
