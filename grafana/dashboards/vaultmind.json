@@ -12,26 +12,26 @@
       "datasource": "Prometheus",
       "targets": [
         {
-          "expr": "documents_total",
-          "legendFormat": "{{status}}"
+          "expr": "sum(documents_total)",
+          "legendFormat": "total"
         }
       ],
       "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4}
     },
     {
       "type": "stat",
-      "title": "Total Users",
+      "title": "Failed Documents",
       "datasource": "Prometheus",
       "targets": [
-        {"expr": "active_users", "legendFormat": "active"}
+        {"expr": "documents_total{status=\"failed\"}", "legendFormat": "failed"}
       ],
       "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4}
     },
     {
       "type": "stat",
-      "title": "Total Chat Sessions",
+      "title": "Chat Request Rate (5m)",
       "datasource": "Prometheus",
-      "targets": [{"expr": "total_chat_sessions", "legendFormat": "sessions"}],
+      "targets": [{"expr": "sum(rate(http_requests_total{endpoint=\"/api/v1/chat\"}[5m]))", "legendFormat": "req/s"}],
       "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4}
     },
     {
@@ -131,9 +131,9 @@
     },
     {
       "type": "stat",
-      "title": "Error Count",
+      "title": "5xx Error Rate (5m)",
       "datasource": "Prometheus",
-      "targets": [{"expr": "error_count", "legendFormat": "errors"}],
+      "targets": [{"expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m]))", "legendFormat": "errors/s"}],
       "gridPos": {"x": 24, "y": 28, "w": 6, "h": 4}
     }
   ]

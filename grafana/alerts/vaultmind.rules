@@ -3,16 +3,18 @@ groups:
   interval: 60s
   rules:
   - alert: HighErrorRate
-    expr: rate(error_count[5m]) > 0.5
+    expr: |
+      sum(rate(http_requests_total{status=~"5.."}[5m]))
+        / clamp_min(sum(rate(http_requests_total[5m])), 0.001) > 0.05
     for: 5m
     labels:
       severity: critical
     annotations:
       summary: "High error rate detected"
-      description: "Error rate is {{ $value }} errors/sec over 5 minutes"
+      description: "5xx responses exceed 5% of traffic ({{ $value | humanizePercentage }} over 5 minutes)"
 
   - alert: ChatLatencyHigh
-    expr: histogram_quantile(0.95, sum(chat_response_duration_ms_bucket) by (le) OR on le (le=\"10000\")) > 3000
+    expr: histogram_quantile(0.95, sum(rate(chat_response_duration_ms_bucket[5m])) by (le)) > 3000
     for: 2m
     labels:
       severity: warning
@@ -21,7 +23,7 @@ groups:
       description: "95th percentile chat response latency is {{ $value }}ms over 2 minutes"
 
   - alert: SearchLatencyHigh
-    expr: histogram_quantile(0.95, sum(search_duration_ms_bucket) by (le) OR on le (le=\"1000\")) > 500
+    expr: histogram_quantile(0.95, sum(rate(search_duration_ms_bucket[5m])) by (le)) > 500
     for: 2m
     labels:
       severity: warning
@@ -30,19 +32,19 @@ groups:
       description: "95th percentile search latency is {{ $value }}ms over 2 minutes"
 
   - alert: ManyFailedDocuments
-    expr: sum(increase(documents_total{status=\"failed\"}[1h])) > 5
-    for: 5m
+    expr: sum(documents_total{status="failed"}) > 10
+    for: 15m
     labels:
       severity: warning
     annotations:
-      summary: "Many document processing failures"
-      description: "More than 5 documents have failed processing in the last hour"
+      summary: "Many documents failed processing"
+      description: "{{ $value }} documents are in failed state"
 
-  - alert: LowDocumentProcessingRate
-    expr: sum(rate(documents_total{status=\"ready\"}[5m])) < 0.1
-    for: 10m
+  - alert: DocumentUploadsStalled
+    expr: sum(rate(http_requests_total{endpoint="/api/v1/documents", method="POST"}[15m])) < 0.01
+    for: 15m
     labels:
       severity: info
     annotations:
-      summary: "Low document processing rate"
-      description: "Fewer than 0.1 documents per minute are being successfully processed"
+      summary: "No document uploads in a while"
+      description: "Fewer than 0.6 uploads/hour observed over the last 15 minutes"

@@ -56,7 +56,6 @@ class Settings(BaseSettings):
 
     # Monitoring
     PROMETHEUS_PORT: int = 9090
-    OPENTELEMETRY_ENABLED: bool = True
 
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
@@ -69,7 +68,7 @@ class Settings(BaseSettings):
         "http://localhost:5174",
     ]
 
-    model_config = {"env_file": ".env", "case_sensitive": True}
+    model_config = {"env_file": ".env", "case_sensitive": True, "extra": "ignore"}
 
 
 settings = Settings()
