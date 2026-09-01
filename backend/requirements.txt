@@ -23,7 +23,7 @@ celery==5.4.0
 redis==5.1.1
 
 # AI / RAG - minimal (single LLM + local embeddings)
-langchain-core==0.3.3
+langchain-core==0.3.15
 langchain-google-genai==2.0.0
 langchain-groq==0.2.1
 sentence-transformers==3.1.1
