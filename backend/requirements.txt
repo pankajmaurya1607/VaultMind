@@ -23,7 +23,7 @@ celery==5.4.0
 redis==5.1.1
 
 # AI / RAG - minimal (single LLM + local embeddings)
-langchain==0.3.3
+langchain-core==0.3.3
 langchain-google-genai==2.0.0
 langchain-groq==0.2.1
 sentence-transformers==3.1.1
@@ -37,7 +37,7 @@ pandas==2.2.3
 # Monitoring - lightweight
 prometheus-client==0.20.0
 
-# Pinned transitive deps to avoid pip backtracking (10m -> 2m build)
+# Pinned transitive deps to avoid pip backtracking
 grpcio==1.62.3
 grpcio-status==1.62.3
 google-api-core==2.19.0

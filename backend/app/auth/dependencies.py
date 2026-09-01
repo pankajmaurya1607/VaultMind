@@ -14,7 +14,7 @@ from app.repositories.auth import AuthRepository
 
 # auto_error=False so cookie-authenticated browser requests (no Authorization
 # header) don't get rejected before we can fall back to the access cookie.
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 _401_HEADERS = {"WWW-Authenticate": "Bearer"}
 
