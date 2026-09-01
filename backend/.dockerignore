@@ -20,3 +20,7 @@ prompts/
 !README.md
 Dockerfile*
 docker-compose*.yml
+
+# Portfolio: exclude planning tasks
+tasks/
+

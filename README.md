@@ -1,31 +1,24 @@
-# Enterprise Knowledge Assistant (EKA)
+# VaultMind — Minimal RAG + RBAC
 
-An enterprise-grade Retrieval-Augmented Generation (RAG) platform built with FastAPI, PostgreSQL+PGVector, Celery, and AI orchestration. Allows employees to securely search and chat with company knowledge while enforcing strict Role-Based Access Control (RBAC).
+A lean Retrieval-Augmented Generation platform built for fast deployment: FastAPI + PostgreSQL+PGVector (384-dim BGE) + Celery/Redis + single LLM (Gemini or Groq). Upload → chunk → embed → retrieve → chat with strict Role-Based Access Control.
 
-## Features
+## Features (core RAG+RBAC only)
 
-- **🔐 Authentication** - HttpOnly-cookie sessions (with Bearer fallback for API clients), token rotation + revocation blacklist, CSRF guard, bcrypt hashing
-- **👥 RBAC** - Role-based (Admin, Manager, Employee) and department-level document access control, enforced at the database query level
-- **📄 Document Management** - Streamed uploads with magic-byte content validation; parse, chunk, and index PDF, DOCX, MD, CSV, XLSX, TXT
-- **🔍 Vector Search** - Semantic search with cosine similarity (HNSW-indexed PGVector), department-filtered results
-- **💬 AI Chat** - Context-aware answers with source citations and confidence scoring
-- **⚡ Async Pipeline** - Celery workers for background document processing; beat scheduler for metrics refresh and blacklist pruning
-- **📊 Monitoring** - Prometheus metrics + alert rules, Grafana dashboards provisioned as code, structured audit trail
-- **🐳 Docker** - Full Docker Compose stack including an nginx-served frontend (same-origin API proxy)
+- **🔐 Auth** - Bearer JWT (with HttpOnly cookie fallback), bcrypt, token blacklist
+- **👥 RBAC** - Roles Admin/Manager/Employee + department isolation at SQL level
+- **📄 Documents** - Streamed uploads (10 MB), PDF/DOCX/MD/CSV/XLSX/TXT → Celery parse/chunk/embed
+- **🔍 Vector Search** - Cosine similarity HNSW PGVector, dept-filtered, parameterized SQL
+- **💬 Chat** - Context-aware answers with citations + confidence; `asyncio.to_thread` offload
+- **⚡ Async** - Celery worker `document_processing` queue, 4 concurrency, retry 3×
+- **🐳 Deploy** - 5 services only (postgres, redis, backend, worker, nginx frontend) — 2-command boot
 
-## Quick Start
+## Quick Start (2 commands)
 
 ```bash
-# Configure
-cp .env.example .env   # set SECRET_KEY (+ optional GEMINI/GROQ keys)
+cp .env.example .env   # set SECRET_KEY for prod, optional GEMINI/GROQ keys
+docker compose up -d --build   # auto: migrate → seed → serve
 
-# Start all services (migrations apply automatically on backend boot)
-docker compose up -d --build
-
-# Seed roles, departments, and the admin user
-docker compose exec backend python seed_data.py
-
-# UI: http://localhost      API: http://localhost:8000/health
+# UI: http://localhost      API: http://localhost/api/v1    Health: http://localhost/health
 ```
 
 Default admin: `admin@eka.com` / `admin123` — change it immediately.
@@ -45,21 +38,20 @@ Default admin: `admin@eka.com` / `admin123` — change it immediately.
 
 ## Tech Stack
 
-- **Backend:** FastAPI, Python 3.12, Uvicorn
-- **Database:** PostgreSQL 16 + PGVector (HNSW), SQLAlchemy 2.0 async, Alembic
-- **Queue:** Celery + Redis, Flower
-- **AI:** Gemini (primary LLM), Groq Llama-3.1 (secondary), local BGE-small embeddings fallback
-- **Frontend:** React 19 + TypeScript + Vite, Tailwind CSS v4, TanStack Query
-- **Monitoring:** Prometheus + Grafana (provisioned as code)
-- **Testing:** Pytest (unit/integration/RBAC matrix/security), Vitest + Playwright
-- **Deployment:** Docker, Docker Compose, GitHub Actions CI
+- **Backend:** FastAPI, Python 3.12, Uvicorn (2 workers)
+- **Database:** PostgreSQL 16 + PGVector HNSW 384-dim, SQLAlchemy 2.0 async, Alembic
+- **Queue:** Celery + Redis (single worker, `document_processing` queue)
+- **AI:** BGE-small-en-v1.5 embeddings (local) + Groq/Gemini single LLM + fallback template
+- **Frontend:** React 19 + TypeScript + Vite, Tailwind v4, TanStack Query, nginx :80 proxy
+- **Testing:** Pytest, Vitest + Playwright
+- **Deploy:** Docker Compose (5 services), GitHub Actions CI (smoke test)
 
 ## Architecture
 
 ```
-Browser → nginx (:80, SPA + /api proxy) → FastAPI → Auth/CSRF/Rate-limit → Services → PGVector → LLM
-                                              ↓
-                                    Redis/Celery workers → parse → chunk → embed → index
+Browser → nginx :80 (SPA + /api proxy) → FastAPI → Services → PGVector → LLM
+                                           ↓
+                                 Redis → Celery worker → parse → chunk → embed → index
 ```
 
 ## License

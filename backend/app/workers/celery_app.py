@@ -1,5 +1,4 @@
 from celery import Celery
-from celery.schedules import crontab
 
 from app.config.settings import settings
 
@@ -7,7 +6,7 @@ celery_app = Celery(
     "eka",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["app.tasks.process", "app.tasks.monitor"],
+    include=["app.tasks.process"],
 )
 
 celery_app.conf.update(
@@ -23,20 +22,6 @@ celery_app.conf.update(
     task_time_limit=600,
     task_routes={
         "app.tasks.process.process_document_task": {"queue": "document_processing"},
-    },
-    beat_schedule={
-        "check-failed-documents": {
-            "task": "app.tasks.monitor.check_failed_documents",
-            "schedule": 300.0,
-        },
-        "update-metrics": {
-            "task": "app.tasks.monitor.update_metrics",
-            "schedule": 60.0,
-        },
-        "prune-blacklisted-tokens": {
-            "task": "app.tasks.monitor.prune_blacklisted_tokens",
-            "schedule": crontab(hour=3, minute=0),
-        },
     },
 )
 

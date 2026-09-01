@@ -88,12 +88,12 @@ def process_document_task(self, document_id: int):
                 logger.error(f"Document {document_id} not found")
                 return
 
-            doc.status = DocumentStatus.PROCESSING
+            doc.status = DocumentStatus.PROCESSING.value
             db.commit()
 
             text = parse_file(doc.file_path, doc.mime_type)
             if not text.strip():
-                doc.status = DocumentStatus.FAILED
+                doc.status = DocumentStatus.FAILED.value
                 doc.error_message = "No text could be extracted"
                 db.commit()
                 return
@@ -146,7 +146,7 @@ def process_document_task(self, document_id: int):
                 department_id=doc.department_id,
             )
 
-            doc.status = DocumentStatus.READY
+            doc.status = DocumentStatus.READY.value
             doc.chunk_count = len(raw_chunks)
             db.commit()
 
@@ -160,7 +160,7 @@ def process_document_task(self, document_id: int):
 
                 doc = db.query(Document).filter(Document.id == document_id).first()
                 if doc:
-                    doc.status = DocumentStatus.FAILED
+                    doc.status = DocumentStatus.FAILED.value
                     doc.error_message = str(exc)
                     db.commit()
         except Exception:

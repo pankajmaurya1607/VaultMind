@@ -35,8 +35,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    # Apply pgvector extension + Alembic migrations before serving.
-    command: sh -c "python migrate.py && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+    # Single-command deploy: migrate + seed (idempotent) + serve.
+    command: sh -c "python migrate.py && python seed_data.py && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
     env_file:
       - .env
     environment:
@@ -81,37 +81,6 @@ services:
     networks:
       - internal
 
-  celery_beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.worker
-    command: ["celery", "-A", "app.workers.celery_app", "beat", "--loglevel=info"]
-    environment:
-      DATABASE_URL_SYNC: postgresql+psycopg2://eka_user:eka_pass@postgres:5432/eka_db
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - internal
-
-  flower:
-    image: mher/flower:2.0
-    ports:
-      - "5555:5555"
-    environment:
-      CELERY_BROKER_URL: redis://redis:6379/0
-      FLOWER_PORT: 5555
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - internal
-
   frontend:
     build:
       context: ./frontend
@@ -119,43 +88,14 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - edge
 
-  prometheus:
-    image: prom/prometheus:v2.53.0
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./grafana/alerts/vaultmind.rules:/etc/prometheus/rules/vaultmind.rules:ro
-      - prometheus_data:/prometheus
-    restart: unless-stopped
-    networks:
-      - internal
-
-  grafana:
-    image: grafana/grafana:11.2.0
-    ports:
-      - "3000:3000"
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
-    depends_on:
-      - prometheus
-    restart: unless-stopped
-    networks:
-      - internal
-
 volumes:
   postgres_data:
-  prometheus_data:
-  grafana_data:
   uploads:
 
 networks:

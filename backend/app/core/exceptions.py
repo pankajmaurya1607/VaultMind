@@ -32,7 +32,18 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         if "ctx" in error and isinstance(error["ctx"], dict):
             clean["ctx"] = {k: str(v) for k, v in error["ctx"].items()}
         errors.append(clean)
+    # exc.body may be FormData or other non-JSON-serializable when multipart validation fails
+    body = exc.body
+    try:
+        import json as _json
+
+        _json.dumps(body)
+    except Exception:
+        try:
+            body = str(body)
+        except Exception:
+            body = None
     return JSONResponse(
         status_code=422,
-        content={"detail": errors, "body": exc.body},
+        content={"detail": errors, "body": body},
     )

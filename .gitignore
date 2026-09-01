@@ -24,14 +24,15 @@ env/
 .DS_Store
 Thumbs.db
 
-# Project
+# Project - runtime artifacts (not for portfolio repo)
 backend/uploads/
 uploads/
 vector_store/
 *.db
-BACKEND_TESTING_GUIDE.md
 frontend/test-results/
+playwright-report/
 .pytest_cache/
+.ruff_cache/
 
 # Coverage
 htmlcov/
@@ -54,3 +55,9 @@ RESUME_ENTRY.md
 
 # Local planning
 COMPLETION_PLAN.md
+
+# Local portfolio notes (not for deploy)
+BACKEND_TESTING_GUIDE.md
+RESUME_ENTRY.md
+COMPLETION_PLAN.md
+

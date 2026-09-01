@@ -3,8 +3,6 @@ import logging
 import os
 from typing import List, Optional
 
-import numpy as np
-
 from app.config.settings import settings
 from app.db.sync_engine import get_sync_engine
 from app.rag.embeddings.embedder import embedding_service
@@ -60,9 +58,14 @@ def _search_params(vector_str: str, department_ids: List[int], top_k: int) -> di
 
 
 def _rows_to_results(rows) -> List[dict]:
+    import math
+
     results = []
     for row in rows:
         score = float(row.score) if row.score is not None else 0.0
+        # PGVector returns NaN for zero-vector cosine (host testing with zero embeddings)
+        if math.isnan(score) or math.isinf(score):
+            score = 0.0
         results.append(
             {
                 "document_id": row.document_id,
@@ -80,7 +83,6 @@ class Retriever:
     def __init__(self):
         self.vector_store_dir = "vector_store"
         os.makedirs(self.vector_store_dir, exist_ok=True)
-        self._local_store = {}
 
     async def search(
         self,
@@ -93,38 +95,9 @@ class Retriever:
         # SentenceTransformer.encode is CPU-bound sync code - offload it.
         query_vector = await asyncio.to_thread(embedding_service.embed_query, query)
 
-        if _pgvector_available:
-            if db is not None:
-                return await self._async_pgvector_search(db, query_vector, department_ids, k)
-            return self._sync_pgvector_search(query_vector, department_ids, k)
-
-        return self._local_search(query_vector, department_ids, k)
-
-    def _local_search(self, query_vector: List[float], department_ids: List[int], top_k: int) -> List[dict]:
-        results = []
-        query_np = np.array(query_vector, dtype=np.float32)
-
-        for doc_id, chunks in self._local_store.items():
-            for chunk in chunks:
-                if department_ids and chunk.get("department_id") not in department_ids:
-                    continue
-                chunk_vec = np.array(chunk["embedding"], dtype=np.float32)
-                denom = np.linalg.norm(query_np) * np.linalg.norm(chunk_vec)
-                score = float(np.dot(query_np, chunk_vec) / (denom + 1e-10)) if denom > 0 else 0.0
-                if score >= settings.SIMILARITY_THRESHOLD:
-                    results.append(
-                        {
-                            "document_id": doc_id,
-                            "filename": chunk.get("filename", ""),
-                            "chunk_index": chunk["chunk_index"],
-                            "text": chunk["text"],
-                            "metadata": chunk.get("metadata", {}),
-                            "score": score,
-                        }
-                    )
-
-        results.sort(key=lambda x: x["score"], reverse=True)
-        return results[:top_k]
+        if db is not None:
+            return await self._async_pgvector_search(db, query_vector, department_ids, k)
+        return self._sync_pgvector_search(query_vector, department_ids, k)
 
     def _sync_pgvector_search(self, query_vector: List[float], department_ids: List[int], top_k: int) -> List[dict]:
         vector_str = _build_vector_str(query_vector)
@@ -152,29 +125,12 @@ class Retriever:
         texts = [c["text"] for c in chunks]
         embeddings = embedding_service.embed(texts)
 
-        for i, chunk in enumerate(chunks):
-            doc_id = document_id
-            if doc_id not in self._local_store:
-                self._local_store[doc_id] = []
-            self._local_store[doc_id].append(
-                {
-                    "chunk_index": chunk["chunk_index"],
-                    "text": chunk["text"],
-                    "metadata": {**chunk["metadata"], "department_id": department_id},
-                    "embedding": embeddings[i],
-                    "filename": filename,
-                    "department_id": department_id,
-                }
-            )
-
-        if _pgvector_available:
-            # Intentionally raises on failure so the Celery task marks the
-            # document FAILED instead of silently losing searchability.
-            self._pgvector_store(document_id, chunks, embeddings, filename, department_id)
+        # Directly persist to PGVector - raises on failure so Celery marks FAILED
+        self._pgvector_store(document_id, chunks, embeddings, filename, department_id)
 
     def evict_document(self, document_id: int):
-        """Drop cached local-store entries when a document is deleted."""
-        self._local_store.pop(document_id, None)
+        """No-op in minimal mode: PGVector is source of truth, local cache removed."""
+        pass
 
     def _pgvector_store(
         self, document_id: int, chunks: List[dict], embeddings: List[List[float]], filename: str, department_id: int

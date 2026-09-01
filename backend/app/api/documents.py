@@ -32,7 +32,7 @@ async def upload_document(
         user_id=current_user.id,
         user_email=current_user.email,
     )
-    return DocumentUploadResponse(id=doc.id, filename=doc.original_filename, status=doc.status.value)
+    return DocumentUploadResponse(id=doc.id, filename=doc.original_filename, status=doc.status.value if hasattr(doc.status, "value") else doc.status)
 
 
 @router.get("", response_model=Paginated[DocumentResponse])

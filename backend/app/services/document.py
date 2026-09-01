@@ -98,7 +98,7 @@ class DocumentService:
             mime_type=file.content_type or "application/octet-stream",
             uploaded_by=user_id,
             department_id=department_id,
-            status=DocumentStatus.PENDING,
+            status=DocumentStatus.PENDING.value,
         )
 
         process_document_task.delay(document.id)

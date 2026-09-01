@@ -15,7 +15,6 @@ class Chunk(Base):
     chunk_index = Column(Integer, nullable=False)
     chunk_metadata = Column("metadata", JSON, default=dict)
     embedding = Column(Vector(settings.PGVECTOR_DIMENSION), nullable=True)
-    embedding_id = Column(String(100), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     document = relationship("Document", back_populates="chunks")

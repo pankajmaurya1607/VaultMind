@@ -44,7 +44,7 @@ class ChatSessionRepository(BaseRepository[ChatSession]):
         result = await self.db.execute(
             select(ChatSession).options(joinedload(ChatSession.messages)).where(ChatSession.id == id)
         )
-        return result.scalar_one_or_none()
+        return result.unique().scalar_one_or_none()
 
 
 class MessageRepository(BaseRepository[Message]):

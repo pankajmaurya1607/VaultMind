@@ -1,7 +1,6 @@
 import enum
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
-from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import relationship
 
 from app.db.session import Base
@@ -25,11 +24,10 @@ class Document(Base):
     mime_type = Column(String(100), nullable=False)
     uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=False)
-    status = Column(SAEnum(DocumentStatus), default=DocumentStatus.PENDING, nullable=False)
+    status = Column(String(20), default=DocumentStatus.PENDING.value, nullable=False)
     error_message = Column(String(1000), nullable=True)
     chunk_count = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     uploader = relationship("User", back_populates="documents")
     department = relationship("Department", back_populates="documents")

@@ -1,6 +1,0 @@
-Context:
-{context}
-
-Question: {question}
-
-Based solely on the context provided above, answer the question. If the context doesn't contain the answer, say so. Always cite the source document filename.

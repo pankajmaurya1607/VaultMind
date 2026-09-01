@@ -52,9 +52,7 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, global_exception_handler)
 
 app.include_router(api_router, prefix="/api/v1")
-
-metrics_app = make_asgi_app()
-app.mount("/metrics", metrics_app)
+app.mount("/metrics", make_asgi_app())
 
 
 @app.get("/health")
