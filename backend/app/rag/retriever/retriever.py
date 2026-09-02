@@ -109,9 +109,54 @@ class Retriever:
         # SentenceTransformer.encode is CPU-bound sync code - offload it.
         query_vector = await asyncio.to_thread(embedding_service.embed_query, query)
 
+        # Fallback for zero vectors (local without torch)
+        if self._is_zero_vector(query_vector):
+            return await self._keyword_search(query, department_ids, k, db)
+
         if db is not None:
-            return await self._async_pgvector_search(db, query_vector, department_ids, k)
-        return self._sync_pgvector_search(query_vector, department_ids, k)
+            results = await self._async_pgvector_search(db, query_vector, department_ids, k)
+            if not results:
+                return await self._keyword_search(query, department_ids, k, db)
+            return results
+        results = self._sync_pgvector_search(query_vector, department_ids, k)
+        if not results:
+            return await self._keyword_search(query, department_ids, k, db)
+        return results
+
+    async def _keyword_search(self, query: str, department_ids: List[int], top_k: int, db: Optional[AsyncSession] = None) -> List[dict]:
+        words = [w for w in query.lower().split() if len(w) > 2]
+        if not words:
+            words = [query.lower()]
+        like_clauses = " OR ".join([f"c.text ILIKE :w{i}" for i in range(len(words))])
+        dept_filter = ""
+        params: dict = {"top_k": top_k}
+        for i, w in enumerate(words):
+            params[f"w{i}"] = f"%{w}%"
+        if department_ids:
+            placeholders = ", ".join(f":d{i}" for i in range(len(department_ids)))
+            dept_filter = f"AND d.department_id IN ({placeholders})"
+            for i, dept_id in enumerate(department_ids):
+                params[f"d{i}"] = dept_id
+        sql_str = f"""
+            SELECT c.id, c.text, c.metadata, c.chunk_index, c.document_id,
+                   0.85 as score,
+                   d.filename as original_filename
+            FROM chunks c
+            JOIN documents d ON d.id = c.document_id
+            WHERE c.embedding IS NOT NULL
+              AND ({like_clauses})
+              {dept_filter}
+            ORDER BY c.chunk_index
+            LIMIT :top_k
+        """
+        sql = sa_text(sql_str)
+        if db is not None:
+            result = await db.execute(sql, params)
+            rows = result.fetchall()
+        else:
+            with get_sync_engine().connect() as conn:
+                rows = conn.execute(sql, params).fetchall()
+        return _rows_to_results(rows)
 
     def _sync_pgvector_search(self, query_vector: List[float], department_ids: List[int], top_k: int) -> List[dict]:
         vector_str = _build_vector_str(query_vector)
@@ -151,9 +196,16 @@ class Retriever:
                 conn.execute(sql, {"vec": _build_vector_str(embeddings[i]), "chunk_id": chunk["chunk_id"]})
             conn.commit()
 
+    def _is_zero_vector(self, vec: List[float]) -> bool:
+        return all(v == 0.0 for v in vec) or embedding_service._local_model is None
+
     async def search_guest(self, query: str, guest_token: str, top_k: int = None, db: Optional[AsyncSession] = None) -> List[dict]:
         k = top_k or settings.TOP_K
         query_vector = await asyncio.to_thread(embedding_service.embed_query, query)
+        # Fallback to keyword search when embeddings are zero vectors (local dev without torch)
+        if self._is_zero_vector(query_vector):
+            return await self._keyword_search_guest(query, guest_token, k, db)
+
         vector_str = _build_vector_str(query_vector)
         sql = sa_text(_GUEST_SEARCH_SQL)
         params = {"vec": vector_str, "guest_token": guest_token, "threshold": settings.SIMILARITY_THRESHOLD, "top_k": k}
@@ -163,6 +215,59 @@ class Retriever:
         else:
             with get_sync_engine().connect() as conn:
                 rows = conn.execute(sql, params).fetchall()
+        results = _rows_to_results(rows)
+        # If vector search returns empty (e.g. threshold too high), fallback to keyword
+        if not results:
+            return await self._keyword_search_guest(query, guest_token, k, db)
+        return results
+
+    async def _keyword_search_guest(self, query: str, guest_token: str, top_k: int, db: Optional[AsyncSession] = None) -> List[dict]:
+        # Simple ILIKE keyword search - works without embeddings, good for Try with zero vectors
+        # Split query into words and search for any word
+        words = [w for w in query.lower().split() if len(w) > 2]
+        if not words:
+            words = [query.lower()]
+        # Build OR conditions
+        like_clauses = " OR ".join([f"c.text ILIKE :w{i}" for i in range(len(words))])
+        sql_str = f"""
+            SELECT c.id, c.text, c.metadata, c.chunk_index, c.document_id,
+                   0.85 as score,
+                   d.original_filename as original_filename
+            FROM guest_chunks c
+            JOIN guest_documents d ON d.id = c.document_id
+            WHERE d.guest_token = :guest_token
+              AND d.expires_at > NOW()
+              AND ({like_clauses})
+            ORDER BY c.chunk_index
+            LIMIT :top_k
+        """
+        sql = sa_text(sql_str)
+        params: dict = {"guest_token": guest_token, "top_k": top_k}
+        for i, w in enumerate(words):
+            params[f"w{i}"] = f"%{w}%"
+        if db is not None:
+            result = await db.execute(sql, params)
+            rows = result.fetchall()
+        else:
+            with get_sync_engine().connect() as conn:
+                rows = conn.execute(sql, params).fetchall()
+        # If still no results, return first chunks (so LLM at least sees something)
+        if not rows:
+            fallback_sql = sa_text("""
+                SELECT c.id, c.text, c.metadata, c.chunk_index, c.document_id,
+                       0.5 as score,
+                       d.original_filename as original_filename
+                FROM guest_chunks c
+                JOIN guest_documents d ON d.id = c.document_id
+                WHERE d.guest_token = :guest_token AND d.expires_at > NOW()
+                ORDER BY c.chunk_index LIMIT :top_k
+            """)
+            if db is not None:
+                result = await db.execute(fallback_sql, {"guest_token": guest_token, "top_k": top_k})
+                rows = result.fetchall()
+            else:
+                with get_sync_engine().connect() as conn:
+                    rows = conn.execute(fallback_sql, {"guest_token": guest_token, "top_k": top_k}).fetchall()
         return _rows_to_results(rows)
 
     def evict_document(self, document_id: int):

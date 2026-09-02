@@ -17,17 +17,78 @@ function formatTime(iso: string) {
 }
 
 function formatAnswer(text: string) {
-  // lightweight markdown: **bold**, line breaks, [1] citations
-  const parts = text.split("\n")
-  return parts.map((line, idx) => {
-    if (!line.trim()) return <div key={idx} className="h-2" />
-    const isBullet = line.trim().startsWith("**") || line.trim().startsWith("-") || /^\d+\./.test(line.trim())
+  const lines = text.split("\n")
+  const out: React.ReactNode[] = []
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    if (!line.trim()) {
+      out.push(<div key={`s-${i}`} className="h-2" />)
+      i++
+      continue
+    }
+    // Markdown table: consecutive | ... | lines
+    if (line.trim().startsWith("|") && line.includes("|")) {
+      const rows: string[][] = []
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        const cells = lines[i]
+          .split("|")
+          .slice(1, -1)
+          .map((c) => c.trim())
+        // skip separator row |---|---|
+        if (cells.every((c) => /^[-:]+$/.test(c.replace(/\s/g, "")))) {
+          i++
+          continue
+        }
+        rows.push(cells)
+        i++
+      }
+      if (rows.length > 0) {
+        out.push(
+          <div key={`tbl-${i}`} className="my-3 overflow-x-auto rounded-lg border">
+            <table className="w-full text-xs">
+              <thead className="bg-muted/50">
+                <tr>
+                  {rows[0].map((h, hi) => (
+                    <th key={hi} className="px-3 py-2 text-left font-semibold whitespace-nowrap">
+                      <span dangerouslySetInnerHTML={{ __html: h.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") }} />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.slice(1).map((r, ri) => (
+                  <tr key={ri} className={ri % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                    {r.map((c, ci) => (
+                      <td key={ci} className="px-3 py-2 align-top leading-relaxed" dangerouslySetInnerHTML={{ __html: c.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\*(.*?)\*/g, "<em>$1</em>") }} />
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      }
+      continue
+    }
+    const isHeading = /^##\s/.test(line.trim()) || (/^\*\*.+\*\*$/.test(line.trim()) && line.trim().length < 100)
     const html = line
+      .replace(/^##\s+/, "")
       .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
       .replace(/\*(.*?)\*/g, "<em>$1</em>")
       .replace(/\[(\d+)\]/g, '<span class="inline-flex items-center justify-center rounded bg-primary/10 text-primary text-[10px] px-1 py-0 ml-1">$1</span>')
-    return <p key={idx} className={isBullet ? "text-sm leading-relaxed" : "text-sm leading-relaxed"} dangerouslySetInnerHTML={{ __html: html }} />
-  })
+      .replace(/\[([^\]]+\.(pdf|docx|txt|md|csv|xlsx))\]/gi, '<span class="inline-flex items-center gap-1 rounded bg-primary/10 text-primary text-[11px] px-1.5 py-0 ml-1">📄 $1</span>')
+    if (isHeading) {
+      out.push(<p key={i} className="text-sm font-semibold mt-3 mb-1 flex items-center gap-1.5" dangerouslySetInnerHTML={{ __html: html }} />)
+    } else {
+      const isList = /^(\d+\.|\-|\•)\s/.test(line.trim())
+      out.push(
+        <p key={i} className={isList ? "text-sm leading-relaxed ml-4 flex gap-2" : "text-sm leading-relaxed"} dangerouslySetInnerHTML={{ __html: isList ? `<span class="text-primary">•</span><span>${html.replace(/^(\d+\.|\-|\•)\s/, "")}</span>` : html }} />
+      )
+    }
+    i++
+  }
+  return out
 }
 
 function SourceBlock({ sources }: { sources: Source[] }) {

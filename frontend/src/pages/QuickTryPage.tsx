@@ -18,32 +18,75 @@ function formatTTL(seconds: number) {
 }
 
 function formatAnswer(text: string) {
-  // Clean up PDF artifacts and render markdown-ish
-  const cleaned = text
-    .replace(/【([^】]+)】/g, "[$1]") // normalize 【file】 -> [file]
-    .replace(/\u3010/g, "[")
-    .replace(/\u3011/g, "]")
-  const parts = cleaned.split("\n")
-  return parts.map((line, idx) => {
+  const cleaned = text.replace(/【([^】]+)】/g, "[$1]").replace(/\u3010/g, "[").replace(/\u3011/g, "]")
+  const lines = cleaned.split("\n")
+  const out: React.ReactNode[] = []
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    if (!line.trim()) {
+      out.push(<div key={`s-${i}`} className="h-2" />)
+      i++
+      continue
+    }
+    if (line.trim().startsWith("|") && line.includes("|")) {
+      const rows: string[][] = []
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        const cells = lines[i].split("|").slice(1, -1).map((c) => c.trim())
+        if (cells.every((c) => /^[-:]+$/.test(c.replace(/\s/g, "")))) {
+          i++
+          continue
+        }
+        rows.push(cells)
+        i++
+      }
+      if (rows.length > 0) {
+        out.push(
+          <div key={`tbl-${i}`} className="my-3 overflow-x-auto rounded-lg border">
+            <table className="w-full text-xs">
+              <thead className="bg-muted/50">
+                <tr>
+                  {rows[0].map((h, hi) => (
+                    <th key={hi} className="px-3 py-2 text-left font-semibold whitespace-nowrap">
+                      <span dangerouslySetInnerHTML={{ __html: h.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") }} />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.slice(1).map((r, ri) => (
+                  <tr key={ri} className={ri % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                    {r.map((c, ci) => (
+                      <td key={ci} className="px-3 py-2 align-top leading-relaxed" dangerouslySetInnerHTML={{ __html: c.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\*(.*?)\*/g, "<em>$1</em>") }} />
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      }
+      continue
+    }
     const trimmed = line.trim()
-    if (!trimmed) return <div key={idx} className="h-2" />
-    // Heading detection (e.g., **Title** on its own line)
-    const isHeading = /^\*\*.+\*\*$/.test(trimmed) && trimmed.length < 80
+    const isHeading = /^##\s/.test(trimmed) || (/^\*\*.+\*\*$/.test(trimmed) && trimmed.length < 100)
     let html = line
+      .replace(/^##\s+/, "")
       .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
       .replace(/\*(.*?)\*/g, "<em>$1</em>")
       .replace(/\[(\d+)\]/g, '<span class="inline-flex items-center justify-center rounded bg-primary/10 text-primary text-[10px] px-1.5 py-0 ml-1">$1</span>')
       .replace(/\[([^\]]+\.(pdf|docx|txt|md|csv|xlsx))\]/gi, '<span class="inline-flex items-center gap-1 rounded bg-primary/10 text-primary text-[11px] px-1.5 py-0 ml-1">📄 $1</span>')
-    // Bullet/numbered list styling
-    const isList = /^(\d+\.|\-|\•)\s/.test(trimmed)
     if (isHeading) {
-      return <p key={idx} className="text-sm font-semibold mt-3 mb-1" dangerouslySetInnerHTML={{ __html: html }} />
+      out.push(<p key={i} className="text-sm font-semibold mt-3 mb-1 flex items-center gap-1.5" dangerouslySetInnerHTML={{ __html: html }} />)
+    } else {
+      const isList = /^(\d+\.|\-|\•)\s/.test(trimmed)
+      out.push(
+        <p key={i} className={isList ? "text-sm leading-relaxed ml-4 flex gap-2" : "text-sm leading-relaxed"} dangerouslySetInnerHTML={{ __html: isList ? `<span class="text-primary">•</span><span>${html.replace(/^(\d+\.|\-|\•)\s/, "")}</span>` : html }} />
+      )
     }
-    if (isList) {
-      return <p key={idx} className="text-sm leading-relaxed ml-4 flex gap-2"><span className="text-primary">•</span><span dangerouslySetInnerHTML={{ __html: html.replace(/^(\d+\.|\-|\•)\s/, "") }} /></p>
-    }
-    return <p key={idx} className="text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: html }} />
-  })
+    i++
+  }
+  return out
 }
 
 function GuestSourceBlock({ sources }: { sources: Array<{ filename: string; chunk_index: number; text: string; score: number }> }) {

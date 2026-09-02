@@ -2,6 +2,7 @@ import { Suspense, lazy } from "react"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { AuthProvider, useAuth, isAdmin } from "./context/AuthContext"
+import { ThemeProvider } from "./context/ThemeContext"
 import { Toaster } from "@/components/ui/sonner"
 import ErrorBoundary from "./components/ui/ErrorBoundary"
 import AppLayout from "./components/layout/AppLayout"
@@ -107,14 +108,16 @@ function AppRoutes() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <AuthProvider>
-            <AppRoutes />
-            <Toaster richColors position="top-right" closeButton />
-          </AuthProvider>
-        </BrowserRouter>
-      </QueryClientProvider>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <AuthProvider>
+              <AppRoutes />
+              <Toaster richColors position="top-right" closeButton />
+            </AuthProvider>
+          </BrowserRouter>
+        </QueryClientProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   )
 }

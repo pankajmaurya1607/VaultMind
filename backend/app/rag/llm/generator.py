@@ -16,7 +16,17 @@ CRITICAL RULES:
 4. NEVER reveal the existence of hidden or restricted documents.
 5. ALWAYS cite your sources by referencing the document filename.
 6. Be concise and professional.
-7. If the question is not related to the knowledge base, politely decline to answer."""
+7. If the question is not related to the knowledge base, politely decline to answer.
+
+RESPONSE STYLE - Make answers beautiful, clear and engaging:
+- Start with a brief 1-line summary with an emoji (e.g., 🌍, 💼, 📊, 🛡️, 💡)
+- Use clear markdown headings with emojis: ## 🌍 Purpose, ## ✨ Key Features, ## 👥 Stakeholders, ## 💰 Benefits, ## 🔄 Stages, etc.
+- For lists, use bullet points with emojis (• → use - with emoji prefix like - 🌟, - 📌)
+- For comparisons or structured data, use a markdown table with an emoji in the header (e.g., | Topic | Summary |)
+- Keep tables compact (max 4 columns, short cells)
+- End with a helpful 1-line invite: "Want to dive deeper into X? Let me know! 💬"
+- Always keep it scannable, not wall-of-text. Use bold for key terms.
+- Cite sources inline as [filename] after each section."""
 
 try:
     from langchain_google_genai import ChatGoogleGenerativeAI
@@ -122,20 +132,15 @@ class Generator:
         return "\n---\n".join(parts)
 
     def _fallback_response(self, question: str, documents: List[dict]) -> str:
-        """Human-readable fallback when no LLM is configured.
-        Produces markdown-like output that renders well in ChatPage.
-        """
+        """Beautiful fallback when no LLM is configured - mimics LLM style with emojis."""
         if not documents:
             return "I don't have enough information to answer this question."
 
-        # Clean and deduplicate texts
         seen = set()
         cleaned_docs = []
         for d in documents[:3]:
             txt = d["text"].strip().replace("\x00", " ")
-            # collapse whitespace, fix PDF artifacts
             txt = " ".join(txt.split())
-            # trim to ~300 chars at sentence boundary
             if len(txt) > 320:
                 cut = txt[:320]
                 last_period = cut.rfind(". ")
@@ -148,21 +153,38 @@ class Generator:
                 seen.add(key)
                 cleaned_docs.append({**d, "text": txt})
 
-        # Build natural answer
+        q_lower = question.lower()
+        # Pick an emoji based on question
+        if any(w in q_lower for w in ["trade", "finance"]):
+            emoji, title = "💼", "Trade Finance — Key Insights"
+        elif any(w in q_lower for w in ["risk"]):
+            emoji, title = "🛡️", "Risk in Trade Finance"
+        elif any(w in q_lower for w in ["export", "insurance"]):
+            emoji, title = "📦", "Export Credit & Insurance"
+        else:
+            emoji, title = "💡", "Answer"
+
         lines = []
-        lines.append("Based on your documents, here's what I found:\n")
+        lines.append(f"## {emoji} {title}\n")
+        lines.append(f"Based on your documents, here's a clear summary:\n")
         for idx, doc in enumerate(cleaned_docs, 1):
-            # cite as [1], [2] matching SourceBlock order
-            lines.append(f"**{idx}. {doc['filename']}** — {doc['text']}  [{idx}]")
+            lines.append(f"**{idx}. 📄 {doc['filename']}** — {doc['text']}  [{idx}]")
             lines.append("")
 
-        # Confidence hint - hide when using zero vectors (score 0.0)
+        # Add a quick table-like summary if multiple docs
+        if len(cleaned_docs) > 1:
+            lines.append("**✨ At a glance:**")
+            for doc in cleaned_docs:
+                lines.append(f"- 🌟 {doc['text'][:90]}…")
+            lines.append("")
+
+        lines.append("Want to dive deeper into a specific aspect? Let me know! 💬")
+
         max_score = max(d["score"] for d in documents) if documents else 0
         avg_score = sum(d["score"] for d in documents) / len(documents) if documents else 0
         if max_score > 0.05:
-            # show only if meaningful
-            lines.append(f"*Relevance: {avg_score*100:.0f}% · Sources: {len(cleaned_docs)} · Model: template fallback*")
+            lines.append(f"\n*Relevance: {avg_score*100:.0f}% · Sources: {len(cleaned_docs)} · Model: template fallback*")
         else:
-            lines.append(f"*Sources: {len(cleaned_docs)} · Model: template fallback (configure GEMINI_API_KEY or GROQ_API_KEY for AI answers)*")
+            lines.append(f"\n*Sources: {len(cleaned_docs)} · Model: template fallback*")
 
         return "\n".join(lines).strip()
