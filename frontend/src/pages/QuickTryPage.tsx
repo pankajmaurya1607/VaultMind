@@ -133,13 +133,39 @@ export default function QuickTryPage() {
     }
   }, [history])
 
-  // clear history when token changes or doc expires
+  // clear history when token changes, doc expires, or TTL hits 0
   useEffect(() => {
     if (!doc && history.length > 0 && !getGuestToken()) {
       setHistory([])
       localStorage.removeItem("vaultmind_guest_history")
     }
   }, [doc, history.length])
+
+  // auto-clear when TTL expires (10 min) - also clears chat history
+  useEffect(() => {
+    if (!doc) return
+    if (expiresIn <= 0 && (doc.status === "ready" || doc.status === "pending" || doc.status === "processing")) {
+      // file expired on server - cleanup local state
+      setHistory([])
+      localStorage.removeItem("vaultmind_guest_history")
+      clearGuestToken()
+      toast.info("Quick Try session expired — file and chat history deleted.", { duration: 4000 })
+      refetch()
+    }
+  }, [expiresIn, doc, refetch])
+
+  // also clear history when server says no documents (expired/deleted)
+  useEffect(() => {
+    if (status && status.documents.length === 0 && history.length > 0 && getGuestToken()) {
+      // server cleaned up, sync local
+      const tokenStillValid = status.expires_in_seconds > 0
+      if (!tokenStillValid) {
+        setHistory([])
+        localStorage.removeItem("vaultmind_guest_history")
+        clearGuestToken()
+      }
+    }
+  }, [status, history.length])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
