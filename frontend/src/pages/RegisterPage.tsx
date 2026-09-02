@@ -130,7 +130,7 @@ export default function RegisterPage() {
                       <FormLabel>Password</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Min. 8 characters, letter + number"
+                          placeholder="Min. 8 characters"
                           type="password"
                           autoComplete="new-password"
                           {...field}
