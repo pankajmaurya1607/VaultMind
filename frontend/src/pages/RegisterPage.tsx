@@ -15,7 +15,11 @@ import { Loader2 } from "lucide-react"
 const registerSchema = z.object({
   name: z.string().min(1, "Name is required").min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address").min(1, "Email is required"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Za-z]/, "Password must contain a letter")
+    .regex(/[0-9]/, "Password must contain a digit"),
   department_id: z.number().min(1, "Department is required"),
 })
 
@@ -43,14 +47,18 @@ export default function RegisterPage() {
       navigate("/dashboard")
     } catch (err: unknown) {
       let msg = "Registration failed. Please try again."
-      const errorResponse =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-      if (errorResponse?.detail) {
-        const detail = errorResponse.detail
-        if (detail.includes("already registered")) {
+      const errorData = (err as { response?: { data?: { detail?: unknown } } })?.response?.data
+      const detail = errorData?.detail
+      if (detail) {
+        const detailStr = Array.isArray(detail)
+          ? (detail[0] as { msg?: string })?.msg || JSON.stringify(detail[0])
+          : (detail as string)
+        if (typeof detailStr === "string" && detailStr.includes("already registered")) {
           msg = "An account with this email already exists."
+        } else if (typeof detailStr === "string" && detailStr.includes("Password must")) {
+          msg = detailStr.replace("Value error, ", "")
         } else {
-          msg = detail
+          msg = typeof detailStr === "string" ? detailStr : JSON.stringify(detail)
         }
       }
       toast.error(msg)
@@ -122,13 +130,14 @@ export default function RegisterPage() {
                       <FormLabel>Password</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Min. 6 characters"
+                          placeholder="Min. 8 characters, letter + number"
                           type="password"
                           autoComplete="new-password"
                           {...field}
                         />
                       </FormControl>
                       <FormMessage />
+                      <p className="text-xs text-muted-foreground">8+ characters, at least one letter and one number.</p>
                     </FormItem>
                   )}
                 />
