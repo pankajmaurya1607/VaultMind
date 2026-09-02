@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     # Celery
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
+    CELERY_WORKER_POOL: str = "prefork"  # prefork=Linux prod (fast), solo=Windows local (billiard fix)
+    CELERY_WORKER_CONCURRENCY: int = 4
 
     # Monitoring
     PROMETHEUS_PORT: int = 9090
