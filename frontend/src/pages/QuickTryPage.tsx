@@ -294,11 +294,9 @@ export default function QuickTryPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-muted/30">
-              <CardContent className="pt-6 text-xs text-muted-foreground leading-relaxed">
-                <strong>How it works:</strong> File is stored under <code className="bg-background px-1 py-0.5 rounded">guest/{getGuestToken()?.slice(0,8) ?? "—"}</code>, chunked → embedded (384-dim BGE) → PGVector, isolated to your <code>guest_token</code>. Auto-deleted after 10 min via TTL sweeper (`app/services/guest.py: cleanup_expired`) and background `cleanup_expired_guest_documents` task.
-              </CardContent>
-            </Card>
+            <p className="text-xs text-muted-foreground text-center px-2 leading-relaxed">
+              🔒 Private & auto-deletes in 10 min · <Link to="/register" className="text-primary hover:underline">Sign up to keep files</Link>
+            </p>
           </div>
 
           <div className="lg:col-span-3">
