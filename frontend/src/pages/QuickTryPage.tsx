@@ -167,9 +167,19 @@ export default function QuickTryPage() {
     }
   }, [status, history.length])
 
+  // only auto-scroll when history grows, not on initial mount (prevents page scrolled down on /try)
+  const prevHistoryLen = useRef(history.length)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [history, chat.isPending])
+    if (history.length > prevHistoryLen.current || chat.isPending) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    }
+    prevHistoryLen.current = history.length
+  }, [history.length, chat.isPending])
+
+  // ensure /try always opens at top, not scrolled to chat bottom
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior })
+  }, [])
 
   const handleFile = async (file: File) => {
     if (file.size > 1 * 1024 * 1024) {
