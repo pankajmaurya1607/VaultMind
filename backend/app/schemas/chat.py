@@ -24,6 +24,8 @@ class ChatResponse(BaseModel):
     confidence_score: float
     tokens_used: int
     latency_ms: int
+    model: str = "template"
+    model_provider: str = "fallback"
 
 
 class SearchRequest(BaseModel):

@@ -16,9 +16,24 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
 }
 
+function formatAnswer(text: string) {
+  // lightweight markdown: **bold**, line breaks, [1] citations
+  const parts = text.split("\n")
+  return parts.map((line, idx) => {
+    if (!line.trim()) return <div key={idx} className="h-2" />
+    const isBullet = line.trim().startsWith("**") || line.trim().startsWith("-") || /^\d+\./.test(line.trim())
+    const html = line
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.*?)\*/g, "<em>$1</em>")
+      .replace(/\[(\d+)\]/g, '<span class="inline-flex items-center justify-center rounded bg-primary/10 text-primary text-[10px] px-1 py-0 ml-1">$1</span>')
+    return <p key={idx} className={isBullet ? "text-sm leading-relaxed" : "text-sm leading-relaxed"} dangerouslySetInnerHTML={{ __html: html }} />
+  })
+}
+
 function SourceBlock({ sources }: { sources: Source[] }) {
   const [open, setOpen] = useState(false)
   if (!sources || sources.length === 0) return null
+  const hasScores = sources.some((s) => s.score > 0.01)
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="mt-2">
       <CollapsibleTrigger asChild>
@@ -33,9 +48,9 @@ function SourceBlock({ sources }: { sources: Source[] }) {
             <div className="flex items-center gap-2">
               <span className="font-medium truncate">{s.filename}</span>
               <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">chunk {s.chunk_index}</Badge>
-              <span className="ml-auto font-mono text-[11px] text-muted-foreground">{(s.score * 100).toFixed(0)}%</span>
+              {hasScores && <span className="ml-auto font-mono text-[11px] text-muted-foreground">{(s.score * 100).toFixed(0)}%</span>}
             </div>
-            <p className="mt-1 line-clamp-2 text-muted-foreground leading-relaxed">{s.text.slice(0, 160)}...</p>
+            <p className="mt-1 line-clamp-2 text-muted-foreground leading-relaxed">{s.text.slice(0, 180)}...</p>
           </div>
         ))}
       </CollapsibleContent>
@@ -182,7 +197,7 @@ export default function ChatPage() {
                   {!isNew && !messagesLoading && !messagesError && (!messages || messages.length === 0) && (
                     <p className="py-12 text-center text-sm text-muted-foreground">No messages yet. Start the conversation below.</p>
                   )}
-                  {messages?.map((m) => (
+                    {messages?.map((m) => (
                     <div key={m.id} className={cn("flex gap-3", m.role === "user" ? "justify-end" : "justify-start")}>
                       {m.role === "assistant" && (
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -190,16 +205,19 @@ export default function ChatPage() {
                         </div>
                       )}
                       <div className={cn("max-w-[75%] rounded-2xl px-4 py-3", m.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border shadow-sm")}>
-                        <p className="whitespace-pre-wrap text-sm leading-relaxed">{m.content}</p>
+                        {m.role === "assistant" ? <div className="space-y-1">{formatAnswer(m.content)}</div> : <p className="whitespace-pre-wrap text-sm leading-relaxed">{m.content}</p>}
                         {m.role === "assistant" && (
                           <>
                             {m.sources && m.sources.length > 0 && <SourceBlock sources={m.sources} />}
-                            {m.confidence_score != null && (
+                            {m.confidence_score != null && m.confidence_score > 0.05 && (
                               <p className="mt-2 text-xs opacity-60">
-                                Confidence: {(m.confidence_score * 100).toFixed(0)}%
-                                {m.tokens_used != null && ` · ${m.tokens_used} tokens`}
-                                {m.latency_ms != null && ` · ${m.latency_ms}ms`}
+                                Relevance: {(m.confidence_score * 100).toFixed(0)}%
+                                {(m as unknown as { tokens_used?: number }).tokens_used != null && ` · ${(m as unknown as { tokens_used: number }).tokens_used} tokens`}
+                                {(m as unknown as { latency_ms?: number }).latency_ms != null && ` · ${(m as unknown as { latency_ms: number }).latency_ms}ms`}
                               </p>
+                            )}
+                            {m.confidence_score != null && m.confidence_score <= 0.05 && (
+                              <p className="mt-2 text-xs opacity-50">Sources: {m.sources?.length ?? 0} · template fallback</p>
                             )}
                           </>
                         )}
@@ -235,9 +253,13 @@ export default function ChatPage() {
                         <Bot className="h-4 w-4" />
                       </div>
                       <div className="max-w-[75%] rounded-2xl border bg-card px-4 py-3 shadow-sm">
-                        <p className="whitespace-pre-wrap text-sm leading-relaxed">{pendingAnswer.answer}</p>
+                        <div className="space-y-1">{formatAnswer(pendingAnswer.answer)}</div>
                         {pendingAnswer.sources.length > 0 && <SourceBlock sources={pendingAnswer.sources} />}
-                        <p className="mt-2 text-xs text-muted-foreground">Confidence: {(pendingAnswer.confidence_score * 100).toFixed(0)}% · {pendingAnswer.latency_ms}ms · {pendingAnswer.tokens_used} tokens</p>
+                        {pendingAnswer.confidence_score > 0.05 ? (
+                          <p className="mt-2 text-xs text-muted-foreground">Relevance: {(pendingAnswer.confidence_score * 100).toFixed(0)}% · {pendingAnswer.latency_ms}ms · {pendingAnswer.tokens_used} tokens · {(pendingAnswer as unknown as { model?: string }).model ?? "template"}</p>
+                        ) : (
+                          <p className="mt-2 text-xs text-muted-foreground">Sources: {pendingAnswer.sources.length} · template fallback</p>
+                        )}
                       </div>
                     </div>
                   )}

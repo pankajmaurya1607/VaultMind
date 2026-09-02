@@ -77,6 +77,8 @@ class ChatService:
             "confidence_score": confidence,
             "tokens_used": self.generator.last_tokens,
             "latency_ms": int(search_time + llm_time),
+            "model": getattr(self.generator, "model_name", "template"),
+            "model_provider": getattr(self.generator, "model_provider", "fallback"),
         }
 
     async def search(self, query: str, department_ids: list[int], top_k: int = 5) -> list[dict]:

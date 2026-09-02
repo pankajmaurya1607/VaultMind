@@ -66,6 +66,8 @@ export interface ChatResponse {
   confidence_score: number
   tokens_used: number
   latency_ms: number
+  model: string
+  model_provider: string
 }
 
 export interface TokenResponse {

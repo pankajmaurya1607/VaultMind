@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     # Groq (Secondary LLM - Free)
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "llama-3.1-70b-versatile"
+    GROQ_MODEL: str = "openai/gpt-oss-20b"
 
     # Local embedding (Free)
     EMBEDDING_MODEL_LOCAL: str = "BAAI/bge-small-en-v1.5"

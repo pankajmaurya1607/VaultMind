@@ -27,6 +27,8 @@ async def chat(
         confidence_score=result["confidence_score"],
         tokens_used=result["tokens_used"],
         latency_ms=result["latency_ms"],
+        model=result.get("model", "template"),
+        model_provider=result.get("model_provider", "fallback"),
     )
 
 

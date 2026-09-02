@@ -37,6 +37,8 @@ class Generator:
     def __init__(self):
         self._llm = None
         self.last_tokens = 0
+        self.model_name = "template"
+        self.model_provider = "fallback"
 
         if _gemini_available:
             try:
@@ -45,6 +47,8 @@ class Generator:
                     google_api_key=settings.GEMINI_API_KEY,
                     temperature=0.1,
                 )
+                self.model_name = settings.GEMINI_CHAT_MODEL
+                self.model_provider = "gemini"
                 logger.info(f"Using Gemini: {settings.GEMINI_CHAT_MODEL}")
             except Exception as e:
                 logger.warning(f"Gemini init failed: {e}")
@@ -56,12 +60,16 @@ class Generator:
                     groq_api_key=settings.GROQ_API_KEY,
                     temperature=0.1,
                 )
+                self.model_name = settings.GROQ_MODEL
+                self.model_provider = "groq"
                 logger.info(f"Using Groq: {settings.GROQ_MODEL}")
             except Exception as e:
                 logger.warning(f"Groq init failed: {e}")
 
         if self._llm is None:
-            logger.warning("No LLM available, using fallback response")
+            self.model_name = "template"
+            self.model_provider = "fallback"
+            logger.warning("No LLM available, using fallback response (template)")
 
     def generate(self, question: str, documents: List[dict]) -> tuple:
         if not documents:
@@ -114,8 +122,47 @@ class Generator:
         return "\n---\n".join(parts)
 
     def _fallback_response(self, question: str, documents: List[dict]) -> str:
-        parts = ["Based on the available documents, here is what I found:\n"]
-        for doc in documents[:3]:
-            parts.append(f"- From '{doc['filename']}': {doc['text'][:200]}...")
-        parts.append(f"\nConfidence: {documents[0]['score']:.2f}" if documents else "")
-        return "\n".join(parts)
+        """Human-readable fallback when no LLM is configured.
+        Produces markdown-like output that renders well in ChatPage.
+        """
+        if not documents:
+            return "I don't have enough information to answer this question."
+
+        # Clean and deduplicate texts
+        seen = set()
+        cleaned_docs = []
+        for d in documents[:3]:
+            txt = d["text"].strip().replace("\x00", " ")
+            # collapse whitespace, fix PDF artifacts
+            txt = " ".join(txt.split())
+            # trim to ~300 chars at sentence boundary
+            if len(txt) > 320:
+                cut = txt[:320]
+                last_period = cut.rfind(". ")
+                if last_period > 180:
+                    txt = cut[: last_period + 1]
+                else:
+                    txt = cut + "…"
+            key = txt[:80]
+            if key not in seen:
+                seen.add(key)
+                cleaned_docs.append({**d, "text": txt})
+
+        # Build natural answer
+        lines = []
+        lines.append("Based on your documents, here's what I found:\n")
+        for idx, doc in enumerate(cleaned_docs, 1):
+            # cite as [1], [2] matching SourceBlock order
+            lines.append(f"**{idx}. {doc['filename']}** — {doc['text']}  [{idx}]")
+            lines.append("")
+
+        # Confidence hint - hide when using zero vectors (score 0.0)
+        max_score = max(d["score"] for d in documents) if documents else 0
+        avg_score = sum(d["score"] for d in documents) / len(documents) if documents else 0
+        if max_score > 0.05:
+            # show only if meaningful
+            lines.append(f"*Relevance: {avg_score*100:.0f}% · Sources: {len(cleaned_docs)} · Model: template fallback*")
+        else:
+            lines.append(f"*Sources: {len(cleaned_docs)} · Model: template fallback (configure GEMINI_API_KEY or GROQ_API_KEY for AI answers)*")
+
+        return "\n".join(lines).strip()
