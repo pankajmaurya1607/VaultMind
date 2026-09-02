@@ -54,17 +54,24 @@ export default function LandingPage() {
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             Upload documents, search semantically, and chat with your data — all with role-based access control and full audit trails.
           </p>
-          <div className="mt-8 flex items-center justify-center gap-3">
-            <Button size="lg" asChild className="gap-2">
-              <Link to="/register">
-                Get started free <ArrowRight className="h-4 w-4" />
+          <div className="mt-8 flex flex-col items-center gap-3">
+            <div className="flex items-center justify-center gap-3">
+              <Button size="lg" asChild className="gap-2">
+                <Link to="/register">
+                  Get started free <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button size="lg" variant="outline" asChild>
+                <Link to="/login">Sign in</Link>
+              </Button>
+            </div>
+            <Button size="lg" variant="secondary" asChild className="gap-2 border-primary/20">
+              <Link to="/try">
+                <Sparkles className="h-4 w-4" /> Try without login — 1MB, 10 min
               </Link>
             </Button>
-            <Button size="lg" variant="outline" asChild>
-              <Link to="/login">Sign in</Link>
-            </Button>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">No credit card required · 10MB per file · All formats supported</p>
+          <p className="mt-3 text-xs text-muted-foreground">No credit card required · 10MB per file · Quick Try 1MB auto-deletes in 10 min</p>
         </div>
       </section>
 
@@ -106,11 +113,16 @@ export default function LandingPage() {
           <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 py-6">
             <div>
               <h3 className="font-semibold">Ready to unlock your knowledge?</h3>
-              <p className="text-sm text-primary-foreground/80">Start for free and see VaultMind in action.</p>
+              <p className="text-sm text-primary-foreground/80">Start for free or try instantly without signup.</p>
             </div>
-            <Button variant="secondary" size="lg" asChild>
-              <Link to="/register">Get started</Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="secondary" size="lg" asChild>
+                <Link to="/register">Get started</Link>
+              </Button>
+              <Button variant="outline" size="lg" asChild className="bg-white text-primary hover:bg-white/90">
+                <Link to="/try">Quick Try</Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </section>

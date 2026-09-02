@@ -37,6 +37,20 @@ _SEARCH_SQL_TEMPLATE = """
     LIMIT :top_k
 """
 
+_GUEST_SEARCH_SQL = """
+    SELECT c.id, c.text, c.metadata, c.chunk_index, c.document_id,
+           1 - (c.embedding <=> CAST(:vec AS vector)) as score,
+           d.original_filename as original_filename
+    FROM guest_chunks c
+    JOIN guest_documents d ON d.id = c.document_id
+    WHERE c.embedding IS NOT NULL
+      AND d.guest_token = :guest_token
+      AND d.expires_at > NOW()
+      AND 1 - (c.embedding <=> CAST(:vec AS vector)) >= :threshold
+    ORDER BY score DESC
+    LIMIT :top_k
+"""
+
 
 def _build_search_query(department_ids: List[int]):
     """Parameterized similarity search. All values are bound - never interpolated."""
@@ -127,6 +141,29 @@ class Retriever:
 
         # Directly persist to PGVector - raises on failure so Celery marks FAILED
         self._pgvector_store(document_id, chunks, embeddings, filename, department_id)
+
+    def store_guest_chunks(self, document_id: int, chunks: List[dict]):
+        texts = [c["text"] for c in chunks]
+        embeddings = embedding_service.embed(texts)
+        sql = sa_text("UPDATE guest_chunks SET embedding = CAST(:vec AS vector) WHERE id = :chunk_id")
+        with get_sync_engine().connect() as conn:
+            for i, chunk in enumerate(chunks):
+                conn.execute(sql, {"vec": _build_vector_str(embeddings[i]), "chunk_id": chunk["chunk_id"]})
+            conn.commit()
+
+    async def search_guest(self, query: str, guest_token: str, top_k: int = None, db: Optional[AsyncSession] = None) -> List[dict]:
+        k = top_k or settings.TOP_K
+        query_vector = await asyncio.to_thread(embedding_service.embed_query, query)
+        vector_str = _build_vector_str(query_vector)
+        sql = sa_text(_GUEST_SEARCH_SQL)
+        params = {"vec": vector_str, "guest_token": guest_token, "threshold": settings.SIMILARITY_THRESHOLD, "top_k": k}
+        if db is not None:
+            result = await db.execute(sql, params)
+            rows = result.fetchall()
+        else:
+            with get_sync_engine().connect() as conn:
+                rows = conn.execute(sql, params).fetchall()
+        return _rows_to_results(rows)
 
     def evict_document(self, document_id: int):
         """No-op in minimal mode: PGVector is source of truth, local cache removed."""

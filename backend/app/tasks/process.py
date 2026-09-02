@@ -166,3 +166,112 @@ def process_document_task(self, document_id: int):
         except Exception:
             pass
         raise self.retry(exc=exc)
+
+
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
+def process_guest_document_task(self, document_id: int):
+    from sqlalchemy.orm import Session
+
+    from app.db.sync_engine import get_sync_engine
+
+    engine = get_sync_engine()
+
+    try:
+        with Session(engine) as db:
+            from app.models.guest_document import GuestDocument
+
+            doc = db.query(GuestDocument).filter(GuestDocument.id == document_id).first()
+            if not doc:
+                logger.error(f"Guest document {document_id} not found")
+                return
+
+            # Check TTL - don't process expired
+            from datetime import datetime, timezone
+
+            if doc.expires_at and doc.expires_at < datetime.now(timezone.utc):
+                logger.info(f"Guest document {document_id} expired before processing")
+                return
+
+            doc.status = "processing"
+            db.commit()
+
+            text = parse_file(doc.file_path, doc.mime_type)
+            if not text.strip():
+                doc.status = "failed"
+                doc.error_message = "No text could be extracted"
+                db.commit()
+                return
+
+            raw_chunks = chunk_text(text)
+
+            from sqlalchemy import delete as sa_delete
+
+            from app.models.guest_chunk import GuestChunk
+
+            db.execute(sa_delete(GuestChunk).where(GuestChunk.document_id == doc.id))
+            db.commit()
+
+            chunk_objects = []
+            for i, chunk_text_content in enumerate(raw_chunks):
+                chunk = GuestChunk(
+                    document_id=doc.id,
+                    text=chunk_text_content,
+                    chunk_index=i,
+                    chunk_metadata={
+                        "filename": doc.original_filename,
+                        "guest_token": doc.guest_token,
+                    },
+                )
+                db.add(chunk)
+                db.flush()
+                chunk_objects.append(
+                    {
+                        "chunk_id": chunk.id,
+                        "chunk_index": chunk.chunk_index,
+                        "text": chunk.text,
+                        "metadata": {
+                            "filename": doc.original_filename,
+                            "guest_token": doc.guest_token,
+                        },
+                    }
+                )
+
+            db.commit()
+
+            retriever.store_guest_chunks(document_id=doc.id, chunks=chunk_objects)
+
+            doc.status = "ready"
+            doc.chunk_count = len(raw_chunks)
+            db.commit()
+
+            logger.info(f"Guest document {document_id} processed: {len(raw_chunks)} chunks")
+
+    except Exception as exc:
+        logger.error(f"Failed to process guest document {document_id}: {exc}")
+        try:
+            with Session(engine) as db:
+                from app.models.guest_document import GuestDocument
+
+                doc = db.query(GuestDocument).filter(GuestDocument.id == document_id).first()
+                if doc:
+                    doc.status = "failed"
+                    doc.error_message = str(exc)
+                    db.commit()
+        except Exception:
+            pass
+        raise self.retry(exc=exc)
+
+
+@celery_app.task
+def cleanup_expired_guest_documents():
+    """Periodic cleanup - can be called via beat or on-demand."""
+    from app.services.guest import cleanup_expired_sync
+
+    try:
+        count = cleanup_expired_sync()
+        if count:
+            logger.info(f"Cleaned up {count} expired guest documents")
+        return count
+    except Exception as exc:
+        logger.error(f"Guest cleanup failed: {exc}")
+        return 0

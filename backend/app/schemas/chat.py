@@ -18,6 +18,8 @@ class Source(BaseModel):
 
 
 class ChatResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
+
     session_id: int
     answer: str
     sources: List[Source]

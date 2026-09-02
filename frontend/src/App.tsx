@@ -9,6 +9,7 @@ import AppLayout from "./components/layout/AppLayout"
 const LoginPage = lazy(() => import("./pages/LoginPage"))
 const RegisterPage = lazy(() => import("./pages/RegisterPage"))
 const LandingPage = lazy(() => import("./pages/LandingPage"))
+const QuickTryPage = lazy(() => import("./pages/QuickTryPage"))
 const DashboardPage = lazy(() => import("./pages/DashboardPage"))
 const DocumentsPage = lazy(() => import("./pages/DocumentsPage"))
 const SearchPage = lazy(() => import("./pages/SearchPage"))
@@ -86,6 +87,7 @@ function AppRoutes() {
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
+        <Route path="/try" element={<QuickTryPage />} />
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />

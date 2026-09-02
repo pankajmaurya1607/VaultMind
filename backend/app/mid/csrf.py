@@ -14,7 +14,7 @@ CSRF_HEADER_VALUE = "XMLHttpRequest"
 
 # Pre-auth / token-issuing endpoints: a stale session cookie must never block
 # login/register/refresh/logout flows.
-EXEMPT_PREFIXES = ("/api/v1/auth/",)
+EXEMPT_PREFIXES = ("/api/v1/auth/", "/api/v1/guest/")
 
 
 class CSRFMiddleware(BaseHTTPMiddleware):

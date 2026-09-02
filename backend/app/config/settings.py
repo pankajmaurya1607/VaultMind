@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     CELERY_WORKER_POOL: str = "prefork"  # prefork=Linux prod (fast), solo=Windows local (billiard fix)
     CELERY_WORKER_CONCURRENCY: int = 4
 
+    # Guest Quick-Try (no login) - 1 file <1MB, TTL auto-delete
+    GUEST_MAX_FILE_SIZE: int = 1 * 1024 * 1024  # 1 MB
+    GUEST_TTL_MINUTES: int = 10
+    GUEST_MAX_FILES_PER_TOKEN: int = 1
+
     # Monitoring
     PROMETHEUS_PORT: int = 9090
 
