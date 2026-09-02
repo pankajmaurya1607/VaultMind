@@ -70,10 +70,18 @@ export default function ChatPage() {
   )
 
   const isNew = activeId === 0 || activeId === null
+  const [optimistic, setOptimistic] = useState<{ id: number; content: string } | null>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, send.isPending, send.data])
+  }, [messages, send.isPending, send.data, optimistic])
+
+  // clear optimistic once real message appears
+  useEffect(() => {
+    if (optimistic && messages?.some((m) => m.role === "user" && m.content === optimistic.content)) {
+      setOptimistic(null)
+    }
+  }, [messages, optimistic])
 
   const pendingAnswer = send.data && send.data.session_id === activeId && send.isSuccess ? send.data : null
   const answerInHistory = pendingAnswer != null && (messages ?? []).some((m) => m.role === "assistant" && m.content === pendingAnswer.answer)
@@ -81,11 +89,14 @@ export default function ChatPage() {
   const handleSend = async () => {
     const trimmed = input.trim()
     if (!trimmed || send.isPending) return
+    const tempId = Date.now()
+    setOptimistic({ id: tempId, content: trimmed })
     setInput("")
     try {
       const result = await send.mutateAsync({ sessionId: isNew ? null : activeId, question: trimmed })
       setActiveId(result.session_id)
     } catch {
+      setOptimistic(null)
       setInput(trimmed)
       toast.error("Failed to send message")
     }
@@ -230,6 +241,17 @@ export default function ChatPage() {
                       )}
                     </div>
                   ))}
+                  {optimistic && (
+                    <div className="flex gap-3 justify-end">
+                      <div className="max-w-[75%] rounded-2xl bg-primary text-primary-foreground px-4 py-3">
+                        <p className="whitespace-pre-wrap text-sm leading-relaxed">{optimistic.content}</p>
+                        <p className="mt-1 text-xs text-primary-foreground/70">Sending...</p>
+                      </div>
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary">
+                        <User className="h-4 w-4" />
+                      </div>
+                    </div>
+                  )}
                   {send.isPending && (
                     <div className="flex gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
