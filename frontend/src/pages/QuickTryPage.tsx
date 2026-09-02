@@ -5,8 +5,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { toast } from "sonner"
-import { Upload, Send, Loader2, Trash2, Clock, Sparkles, FileText, Shield, Timer } from "lucide-react"
+import { Upload, Send, Loader2, Trash2, Clock, Sparkles, FileText, Shield, Timer, ChevronDown, ChevronUp, Bot, User } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 function formatTTL(seconds: number) {
   const m = Math.floor(seconds / 60)
@@ -15,15 +18,71 @@ function formatTTL(seconds: number) {
 }
 
 function formatAnswer(text: string) {
-  const parts = text.split("\n")
+  // Clean up PDF artifacts and render markdown-ish
+  const cleaned = text
+    .replace(/【([^】]+)】/g, "[$1]") // normalize 【file】 -> [file]
+    .replace(/\u3010/g, "[")
+    .replace(/\u3011/g, "]")
+  const parts = cleaned.split("\n")
   return parts.map((line, idx) => {
-    if (!line.trim()) return <div key={idx} className="h-2" />
-    const html = line
+    const trimmed = line.trim()
+    if (!trimmed) return <div key={idx} className="h-2" />
+    // Heading detection (e.g., **Title** on its own line)
+    const isHeading = /^\*\*.+\*\*$/.test(trimmed) && trimmed.length < 80
+    let html = line
       .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
       .replace(/\*(.*?)\*/g, "<em>$1</em>")
-      .replace(/\[(\d+)\]/g, '<span class="inline-flex items-center justify-center rounded bg-primary/10 text-primary text-[10px] px-1 py-0 ml-1">$1</span>')
+      .replace(/\[(\d+)\]/g, '<span class="inline-flex items-center justify-center rounded bg-primary/10 text-primary text-[10px] px-1.5 py-0 ml-1">$1</span>')
+      .replace(/\[([^\]]+\.(pdf|docx|txt|md|csv|xlsx))\]/gi, '<span class="inline-flex items-center gap-1 rounded bg-primary/10 text-primary text-[11px] px-1.5 py-0 ml-1">📄 $1</span>')
+    // Bullet/numbered list styling
+    const isList = /^(\d+\.|\-|\•)\s/.test(trimmed)
+    if (isHeading) {
+      return <p key={idx} className="text-sm font-semibold mt-3 mb-1" dangerouslySetInnerHTML={{ __html: html }} />
+    }
+    if (isList) {
+      return <p key={idx} className="text-sm leading-relaxed ml-4 flex gap-2"><span className="text-primary">•</span><span dangerouslySetInnerHTML={{ __html: html.replace(/^(\d+\.|\-|\•)\s/, "") }} /></p>
+    }
     return <p key={idx} className="text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: html }} />
   })
+}
+
+function GuestSourceBlock({ sources }: { sources: Array<{ filename: string; chunk_index: number; text: string; score: number }> }) {
+  const [open, setOpen] = useState(false)
+  if (!sources || sources.length === 0) return null
+  const hasScores = sources.some((s) => s.score > 0.01)
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="mt-3">
+      <CollapsibleTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1">
+          {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          {open ? "Hide" : "Show"} sources ({sources.length})
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-2 space-y-1.5">
+        {sources.map((s, i) => (
+          <div key={i} className="rounded-md border bg-muted/50 px-3 py-2 text-xs">
+            <div className="flex items-center gap-2">
+              <FileText className="h-3 w-3 text-muted-foreground" />
+              <span className="font-medium truncate">{s.filename}</span>
+              <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">chunk {s.chunk_index}</Badge>
+              {hasScores && <span className="ml-auto font-mono text-[11px] text-muted-foreground">{(s.score * 100).toFixed(0)}%</span>}
+            </div>
+            <p className="mt-1.5 text-muted-foreground leading-relaxed line-clamp-3">{s.text.slice(0, 200)}</p>
+          </div>
+        ))}
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
+
+type GuestHistoryItem = {
+  id: number
+  role: "user" | "assistant"
+  content: string
+  sources?: Array<{ filename: string; chunk_index: number; text: string; score: number }>
+  model?: string
+  latency_ms?: number
+  confidence?: number
 }
 
 export default function QuickTryPage() {
@@ -35,6 +94,15 @@ export default function QuickTryPage() {
   const [dragOver, setDragOver] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const [nowTick, setNowTick] = useState(Date.now())
+  const [history, setHistory] = useState<GuestHistoryItem[]>(() => {
+    try {
+      const raw = localStorage.getItem("vaultmind_guest_history")
+      return raw ? JSON.parse(raw) : []
+    } catch {
+      return []
+    }
+  })
+  const bottomRef = useRef<HTMLDivElement>(null)
 
   const doc = status?.documents?.[0]
   const expiresIn = (() => {
@@ -56,6 +124,26 @@ export default function QuickTryPage() {
       return () => clearInterval(id)
     }
   }, [doc?.status, refetch])
+
+  // persist history per guest_token
+  useEffect(() => {
+    const token = getGuestToken()
+    if (token && history.length > 0) {
+      localStorage.setItem("vaultmind_guest_history", JSON.stringify(history.slice(-20)))
+    }
+  }, [history])
+
+  // clear history when token changes or doc expires
+  useEffect(() => {
+    if (!doc && history.length > 0 && !getGuestToken()) {
+      setHistory([])
+      localStorage.removeItem("vaultmind_guest_history")
+    }
+  }, [doc, history.length])
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [history, chat.isPending])
 
   const handleFile = async (file: File) => {
     if (file.size > 1 * 1024 * 1024) {
@@ -86,13 +174,27 @@ export default function QuickTryPage() {
       toast.error(doc?.status === "processing" || doc?.status === "pending" ? "File still processing, wait a few seconds" : "Upload a file first")
       return
     }
+    const userMsg: GuestHistoryItem = { id: Date.now(), role: "user", content: q }
+    setHistory((h) => [...h, userMsg])
     setQuestion("")
     try {
-      await chat.mutateAsync(q)
+      const res = await chat.mutateAsync(q)
+      const assistantMsg: GuestHistoryItem = {
+        id: Date.now() + 1,
+        role: "assistant",
+        content: res.answer,
+        sources: res.sources,
+        model: res.model,
+        latency_ms: res.latency_ms,
+        confidence: res.confidence_score,
+      }
+      setHistory((h) => [...h, assistantMsg])
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || (err as Error).message
       toast.error(msg || "Chat failed")
       setQuestion(q)
+      // remove optimistic user message on failure
+      setHistory((h) => h.filter((m) => m.id !== userMsg.id))
     }
   }
 
@@ -100,9 +202,13 @@ export default function QuickTryPage() {
     try {
       await clear.mutateAsync()
       chat.reset()
+      setHistory([])
+      localStorage.removeItem("vaultmind_guest_history")
       toast.success("Session cleared")
     } catch {
       clearGuestToken()
+      setHistory([])
+      localStorage.removeItem("vaultmind_guest_history")
       toast.success("Session cleared")
     }
   }
@@ -202,37 +308,68 @@ export default function QuickTryPage() {
                 <CardDescription>Answers are cited from your upload only. Same RAG pipeline as logged-in users.</CardDescription>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {!doc && <div className="flex flex-col items-center justify-center py-16 text-center"><div className="rounded-full bg-primary/10 p-4 mb-3"><FileText className="h-6 w-6 text-primary" /></div><p className="text-sm font-medium">No file yet</p><p className="text-xs text-muted-foreground mt-1 max-w-sm">Upload a PDF or DOCX (&lt;1MB) to start chatting. You’ll get the same AI search & citations as full users.</p></div>}
-                  {doc && doc.status !== "ready" && <div className="flex flex-col items-center justify-center py-12 text-center"><Loader2 className="h-6 w-6 animate-spin text-primary mb-3" /><p className="text-sm">Processing <strong>{doc.filename}</strong>...</p><p className="text-xs text-muted-foreground mt-1">Chunking & embedding — usually 3-5 seconds</p></div>}
-                  {chat.data && (
-                    <div className="space-y-3">
-                      <div className="flex justify-end"><div className="max-w-[80%] rounded-2xl bg-primary text-primary-foreground px-4 py-2 text-sm">{chat.variables as unknown as string}</div></div>
-                      <div className="flex gap-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground shrink-0"><Sparkles className="h-3.5 w-3.5" /></div>
-                        <div className="flex-1 rounded-2xl border bg-card px-4 py-3 shadow-sm">
-                          <div className="space-y-1">{formatAnswer(chat.data.answer)}</div>
-                          {chat.data.sources?.length > 0 && (
-                            <div className="mt-3 space-y-1">
-                              <p className="text-xs font-medium">Sources ({chat.data.sources.length})</p>
-                              {chat.data.sources.slice(0,3).map((s, i) => (
-                                <div key={i} className="rounded border bg-muted/50 px-2 py-1.5 text-xs">
-                                  <span className="font-medium">{s.filename}</span> <span className="text-muted-foreground">· chunk {s.chunk_index} · {(s.score*100).toFixed(0)}%</span>
-                                  <p className="text-muted-foreground line-clamp-2 mt-1">{s.text.slice(0,160)}...</p>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <p className="mt-2 text-xs text-muted-foreground">
-                            {chat.data.confidence_score > 0.05 ? `Relevance ${(chat.data.confidence_score*100).toFixed(0)}% · ` : ""}{chat.data.latency_ms}ms · {chat.data.model} · ttl {formatTTL(expiresIn)}
-                          </p>
+                <ScrollArea className="flex-1">
+                  <div className="p-4 space-y-4">
+                    {!doc && (
+                      <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <div className="rounded-full bg-primary/10 p-4 mb-3"><FileText className="h-6 w-6 text-primary" /></div>
+                        <p className="text-sm font-medium">No file yet</p>
+                        <p className="text-xs text-muted-foreground mt-1 max-w-sm">Upload a PDF or DOCX (&lt;1MB) to start chatting. You’ll get the same AI search & citations as full users.</p>
+                      </div>
+                    )}
+                    {doc && doc.status !== "ready" && (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary mb-3" />
+                        <p className="text-sm">Processing <strong>{doc.filename}</strong>...</p>
+                        <p className="text-xs text-muted-foreground mt-1">Chunking & embedding — usually 3-5 seconds</p>
+                      </div>
+                    )}
+                    {doc?.status === "ready" && history.length === 0 && !chat.isPending && (
+                      <div className="text-center py-8">
+                        <p className="text-sm font-medium">Ready! Ask anything about <strong>{doc.filename}</strong></p>
+                        <div className="mt-4 grid gap-2 text-left max-w-md mx-auto">
+                          {["Summarize this document", "What are the key points?", "Extract action items"].map((q) => (
+                            <button key={q} onClick={() => setQuestion(q)} className="rounded-lg border p-3 text-left text-sm hover:bg-accent transition-colors">
+                              {q}
+                            </button>
+                          ))}
                         </div>
                       </div>
-                    </div>
-                  )}
-                  {chat.isPending && <div className="flex gap-2"><div className="h-7 w-7 rounded-full bg-primary animate-pulse" /><div className="rounded-2xl border px-4 py-3 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Thinking...</div></div>}
-                  {!chat.data && doc?.status === "ready" && <div className="text-center py-8"><p className="text-sm font-medium">Ready! Ask anything about <strong>{doc.filename}</strong></p><div className="mt-3 grid gap-2 text-left max-w-md mx-auto">{["Summarize this document", "What are the key points?", "Extract action items"].map((q) => (<button key={q} onClick={() => setQuestion(q)} className="rounded-lg border p-2.5 text-left text-sm hover:bg-accent">{q}</button>))}</div></div>}
-                </div>
+                    )}
+                    {history.map((m) => (
+                      <div key={m.id} className={cn("flex gap-2", m.role === "user" ? "justify-end" : "justify-start")}>
+                        {m.role === "assistant" && (
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                            <Bot className="h-3.5 w-3.5" />
+                          </div>
+                        )}
+                        <div className={cn("max-w-[80%] rounded-2xl px-4 py-3 text-sm", m.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border shadow-sm")}>
+                          {m.role === "assistant" ? <div className="space-y-1">{formatAnswer(m.content)}</div> : <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>}
+                          {m.role === "assistant" && m.sources && m.sources.length > 0 && <GuestSourceBlock sources={m.sources} />}
+                          {m.role === "assistant" && (
+                            <p className="mt-2 text-xs opacity-60">
+                              {m.confidence != null && m.confidence > 0.05 ? `Relevance ${(m.confidence * 100).toFixed(0)}% · ` : ""}
+                              {m.latency_ms != null ? `${m.latency_ms}ms · ` : ""}
+                              {m.model ?? "template"} · ttl {formatTTL(expiresIn)}
+                            </p>
+                          )}
+                        </div>
+                        {m.role === "user" && (
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary">
+                            <User className="h-3.5 w-3.5" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {chat.isPending && (
+                      <div className="flex gap-2">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground shrink-0"><Bot className="h-3.5 w-3.5" /></div>
+                        <div className="rounded-2xl border bg-card px-4 py-3 text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Thinking...</div>
+                      </div>
+                    )}
+                    <div ref={bottomRef} />
+                  </div>
+                </ScrollArea>
                 <div className="border-t p-3 bg-card">
                   <div className="flex gap-2">
                     <Input value={question} onChange={(e) => setQuestion(e.target.value)} onKeyDown={(e) => { if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); onAsk() }}} placeholder={doc?.status==="ready" ? "Ask about your file..." : "Upload a file to chat"} disabled={!doc || doc.status!=="ready" || chat.isPending} className="flex-1" />
