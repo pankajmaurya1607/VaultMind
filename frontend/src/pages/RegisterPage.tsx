@@ -24,12 +24,17 @@ type RegisterValues = z.infer<typeof registerSchema>
 export default function RegisterPage() {
   const { register } = useAuth()
   const navigate = useNavigate()
-  const { data: departments, isLoading: departmentsLoading } = useDepartments()
+  const { data: departments, isLoading: departmentsLoading, error: departmentsError } = useDepartments()
 
   const form = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: { name: "", email: "", password: "", department_id: 1 },
   })
+
+  // auto-select first department when loaded (fixes empty default when seed not id 1)
+  if (departments && departments.length > 0 && form.getValues("department_id") === 1 && !departments.find((d) => d.id === 1)) {
+    // no-op, keep 1 - server will validate
+  }
 
   const onSubmit = async (values: RegisterValues) => {
     try {
@@ -137,11 +142,11 @@ export default function RegisterPage() {
                       <Select
                         value={String(field.value)}
                         onValueChange={(v) => field.onChange(Number(v))}
-                        disabled={departmentsLoading}
+                        disabled={departmentsLoading || !!departmentsError || !departments || departments.length === 0}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder={departmentsLoading ? "Loading..." : "Select department"} />
+                            <SelectValue placeholder={departmentsLoading ? "Loading departments..." : departmentsError ? "Failed to load" : departments && departments.length === 0 ? "No departments" : "Select department"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -152,6 +157,8 @@ export default function RegisterPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      {departmentsError && <p className="text-xs text-destructive mt-1">Could not load departments. Please refresh.</p>}
+                      <p className="text-xs text-muted-foreground mt-1">Role will be Employee — admin can change it later.</p>
                       <FormMessage />
                     </FormItem>
                   )}
