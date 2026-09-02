@@ -167,7 +167,7 @@ export default function RegisterPage() {
                         </SelectContent>
                       </Select>
                       {departmentsError && <p className="text-xs text-destructive mt-1">Could not load departments. Please refresh.</p>}
-                      <p className="text-xs text-muted-foreground mt-1">Role will be Employee — admin can change it later.</p>
+                      <p className="text-xs text-muted-foreground mt-1">Role will be Employee - admin can change it later.</p>
                       <FormMessage />
                     </FormItem>
                   )}

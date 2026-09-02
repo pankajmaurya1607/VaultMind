@@ -447,10 +447,10 @@ export default function QuickTryPage() {
                     <div ref={bottomRef} />
                   </div>
                 </ScrollArea>
-                <div className="border-t p-3 bg-card">
-                  <div className="flex gap-2">
-                    <Input value={question} onChange={(e) => setQuestion(e.target.value)} onKeyDown={(e) => { if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); onAsk() }}} placeholder={doc?.status==="ready" ? "Ask about your file..." : "Upload a file to chat"} disabled={!doc || doc.status!=="ready" || chat.isPending} className="flex-1" />
-                    <Button onClick={onAsk} disabled={!question.trim() || !doc || doc.status!=="ready" || chat.isPending} className="gap-2">{chat.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}Send</Button>
+                <div className="p-4 bg-gradient-to-t from-background via-background to-transparent">
+                  <div className="flex gap-2 rounded-2xl border bg-card shadow-lg p-2">
+                    <Input value={question} onChange={(e) => setQuestion(e.target.value)} onKeyDown={(e) => { if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); onAsk() }}} placeholder={doc?.status==="ready" ? "Ask about your file..." : "Upload a file to chat"} disabled={!doc || doc.status!=="ready" || chat.isPending} className="flex-1 border-0 shadow-none focus-visible:ring-0" />
+                    <Button onClick={onAsk} disabled={!question.trim() || !doc || doc.status!=="ready" || chat.isPending} className="gap-2 rounded-xl shrink-0">{chat.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}Send</Button>
                   </div>
                   <p className="text-xs text-muted-foreground text-center mt-2">Guest chats are isolated · Auto-deletes in {formatTTL(expiresIn)} · <Link to="/register" className="text-primary hover:underline">Sign up to keep files</Link></p>
                 </div>

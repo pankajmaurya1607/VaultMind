@@ -39,3 +39,24 @@ export function useSendMessage() {
     },
   })
 }
+
+export function useRenameChat() {
+  const qc = useQueryClient()
+  return useMutation<ChatSession, Error, { id: number; title: string }>({
+    mutationFn: async ({ id, title }) => {
+      const { data } = await api.patch(`/chat/history/${id}`, { title })
+      return data
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["chat-sessions"] }),
+  })
+}
+
+export function useDeleteChat() {
+  const qc = useQueryClient()
+  return useMutation<void, Error, number>({
+    mutationFn: async (id: number) => {
+      await api.delete(`/chat/history/${id}`)
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["chat-sessions"] }),
+  })
+}

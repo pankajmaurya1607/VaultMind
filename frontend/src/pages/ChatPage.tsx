@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { useChatSessions, useChatMessages, useSendMessage } from "@/hooks/useChat"
+import { useChatSessions, useChatMessages, useSendMessage, useRenameChat, useDeleteChat } from "@/hooks/useChat"
 import type { Source } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -7,8 +7,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
-import { Send, Loader2, MessageSquare, Plus, Bot, User, ChevronDown, ChevronUp, Sparkles } from "lucide-react"
+import { Send, Loader2, MessageSquare, Plus, Bot, User, ChevronDown, ChevronUp, Sparkles, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
 
@@ -125,6 +127,11 @@ export default function ChatPage() {
   const [input, setInput] = useState("")
   const bottomRef = useRef<HTMLDivElement>(null)
   const send = useSendMessage()
+  const renameChat = useRenameChat()
+  const deleteChat = useDeleteChat()
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editTitle, setEditTitle] = useState("")
+  const [deleteId, setDeleteId] = useState<number | null>(null)
 
   const { data: messages, isLoading: messagesLoading, error: messagesError } = useChatMessages(
     activeId && activeId > 0 ? activeId : null
@@ -193,18 +200,41 @@ export default function ChatPage() {
               <p className="px-3 py-4 text-center text-xs text-muted-foreground">No conversations yet</p>
             )}
             {sessions?.map((s) => (
-              <button
+              <div
                 key={s.id}
-                onClick={() => setActiveId(s.id)}
                 className={cn(
-                  "flex w-full items-center gap-2 truncate rounded-md px-3 py-2 text-left text-sm transition-colors",
+                  "group flex w-full items-center gap-1 rounded-md px-2 py-1 text-sm transition-colors",
                   s.id === activeId ? "bg-primary text-primary-foreground" : "hover:bg-accent hover:text-accent-foreground text-muted-foreground"
                 )}
-                title={s.title}
               >
-                <MessageSquare className="h-4 w-4 shrink-0" />
-                <span className="truncate">{s.title}</span>
-              </button>
+                <button onClick={() => setActiveId(s.id)} className="flex flex-1 items-center gap-2 truncate px-1 py-1 text-left" title={s.title}>
+                  <MessageSquare className="h-4 w-4 shrink-0" />
+                  <span className="truncate flex-1">{s.title}</span>
+                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className={cn("h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100", s.id === activeId && "opacity-100 text-primary-foreground hover:bg-primary/20")} onClick={(e) => e.stopPropagation()}>
+                      <MoreHorizontal className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setEditingId(s.id)
+                        setEditTitle(s.title)
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" /> Rename
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setDeleteId(s.id)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             ))}
           </div>
         </ScrollArea>
@@ -241,10 +271,10 @@ export default function ChatPage() {
                   </div>
                 </div>
               </div>
-              <div className="border-t bg-card p-3">
-                <div className="mx-auto flex max-w-3xl gap-2">
-                  <Input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ask a question..." className="flex-1" disabled={send.isPending} />
-                  <Button onClick={handleSend} disabled={!input.trim() || send.isPending} className="gap-2">
+              <div className="p-4 bg-gradient-to-t from-background via-background to-transparent">
+                <div className="mx-auto flex max-w-3xl gap-2 rounded-2xl border bg-card shadow-lg p-2">
+                  <Input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ask a question..." className="flex-1 border-0 shadow-none focus-visible:ring-0" disabled={send.isPending} />
+                  <Button onClick={handleSend} disabled={!input.trim() || send.isPending} className="gap-2 rounded-xl shrink-0">
                     {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send
                   </Button>
                 </div>
@@ -349,10 +379,10 @@ export default function ChatPage() {
                   <div ref={bottomRef} />
                 </div>
               </ScrollArea>
-              <div className="border-t bg-card p-3">
-                <div className="mx-auto flex max-w-3xl gap-2">
-                  <Input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder={isNew ? "Ask a question..." : "Follow up..."} className="flex-1" disabled={send.isPending} />
-                  <Button onClick={handleSend} disabled={!input.trim() || send.isPending} className="gap-2">
+              <div className="p-4 bg-gradient-to-t from-background via-background to-transparent">
+                <div className="mx-auto flex max-w-3xl gap-2 rounded-2xl border bg-card shadow-lg p-2">
+                  <Input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder={isNew ? "Ask a question..." : "Follow up..."} className="flex-1 border-0 shadow-none focus-visible:ring-0" disabled={send.isPending} />
+                  <Button onClick={handleSend} disabled={!input.trim() || send.isPending} className="gap-2 rounded-xl shrink-0">
                     {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send
                   </Button>
                 </div>
@@ -362,6 +392,43 @@ export default function ChatPage() {
           )}
         </div>
       </div>
+
+      <Dialog open={editingId !== null} onOpenChange={(o) => !o && setEditingId(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rename chat</DialogTitle>
+          </DialogHeader>
+          <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Chat title" maxLength={80} autoFocus onKeyDown={(e) => e.key === "Enter" && editTitle.trim() && renameChat.mutate({ id: editingId!, title: editTitle.trim() }, { onSuccess: () => setEditingId(null) })} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingId(null)}>Cancel</Button>
+            <Button
+              onClick={() => renameChat.mutate({ id: editingId!, title: editTitle.trim() }, { onSuccess: () => setEditingId(null) })}
+              disabled={!editTitle.trim() || renameChat.isPending}
+            >
+              {renameChat.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteId !== null} onOpenChange={(o) => !o && setDeleteId(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete chat?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">This will permanently delete this chat and its messages. This cannot be undone.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteChat.mutate(deleteId!, { onSuccess: () => { if (activeId === deleteId) setActiveId(null); setDeleteId(null) } })}
+              disabled={deleteChat.isPending}
+            >
+              {deleteChat.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
