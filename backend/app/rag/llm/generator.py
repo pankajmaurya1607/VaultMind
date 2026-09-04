@@ -1,10 +1,16 @@
 import logging
 from typing import List
 
+import httpx
+
 from app.config.settings import settings
 from app.monitoring.metrics import TOKENS_USED
 
 logger = logging.getLogger("eka")
+
+GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+_LLM_TIMEOUT = 60.0
 
 SYSTEM_PROMPT = """You are an enterprise knowledge assistant. Your purpose is to help employees find answers from
 company documents.
@@ -28,55 +34,72 @@ RESPONSE STYLE - Make answers beautiful, clear and engaging:
 - Always keep it scannable, not wall-of-text. Use bold for key terms.
 - Cite sources inline as [filename] after each section."""
 
-try:
-    from langchain_google_genai import ChatGoogleGenerativeAI
+_gemini_available = bool(settings.GEMINI_API_KEY)
+_groq_available = bool(settings.GROQ_API_KEY)
 
-    _gemini_available = bool(settings.GEMINI_API_KEY)
-except Exception:
-    _gemini_available = False
 
-try:
-    from langchain_groq import ChatGroq
+def _call_gemini(prompt: str) -> tuple[str, int]:
+    """Direct Gemini generateContent REST call (no langchain). Returns (text, tokens)."""
+    url = f"{GEMINI_API_BASE}/{settings.GEMINI_CHAT_MODEL}:generateContent"
+    payload = {
+        "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.1},
+    }
+    resp = httpx.post(
+        url,
+        headers={"x-goog-api-key": settings.GEMINI_API_KEY, "Content-Type": "application/json"},
+        json=payload,
+        timeout=_LLM_TIMEOUT,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    candidates = data.get("candidates") or []
+    parts = ((candidates[0].get("content") or {}).get("parts") or []) if candidates else []
+    text = "".join(p.get("text", "") for p in parts if isinstance(p, dict)).strip()
+    if not text:
+        raise RuntimeError(f"Gemini returned no text: {str(data)[:200]}")
+    tokens = (data.get("usageMetadata") or {}).get("totalTokenCount", 0) or 0
+    return text, int(tokens)
 
-    _groq_available = bool(settings.GROQ_API_KEY)
-except Exception:
-    _groq_available = False
+
+def _call_groq(prompt: str) -> tuple[str, int]:
+    """Direct Groq OpenAI-compatible chat call (no langchain). Returns (text, tokens)."""
+    resp = httpx.post(
+        GROQ_API_URL,
+        headers={"Authorization": f"Bearer {settings.GROQ_API_KEY}", "Content-Type": "application/json"},
+        json={
+            "model": settings.GROQ_MODEL,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.1,
+        },
+        timeout=_LLM_TIMEOUT,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    choices = data.get("choices") or []
+    text = ((choices[0].get("message") or {}).get("content") or "").strip() if choices else ""
+    if not text:
+        raise RuntimeError(f"Groq returned no text: {str(data)[:200]}")
+    tokens = (data.get("usage") or {}).get("total_tokens", 0) or 0
+    return text, int(tokens)
 
 
 class Generator:
     def __init__(self):
-        self._llm = None
         self.last_tokens = 0
-        self.model_name = "template"
-        self.model_provider = "fallback"
-
         if _gemini_available:
-            try:
-                self._llm = ChatGoogleGenerativeAI(
-                    model=settings.GEMINI_CHAT_MODEL,
-                    google_api_key=settings.GEMINI_API_KEY,
-                    temperature=0.1,
-                )
-                self.model_name = settings.GEMINI_CHAT_MODEL
-                self.model_provider = "gemini"
-                logger.info(f"Using Gemini: {settings.GEMINI_CHAT_MODEL}")
-            except Exception as e:
-                logger.warning(f"Gemini init failed: {e}")
-
-        if self._llm is None and _groq_available:
-            try:
-                self._llm = ChatGroq(
-                    model=settings.GROQ_MODEL,
-                    groq_api_key=settings.GROQ_API_KEY,
-                    temperature=0.1,
-                )
-                self.model_name = settings.GROQ_MODEL
-                self.model_provider = "groq"
-                logger.info(f"Using Groq: {settings.GROQ_MODEL}")
-            except Exception as e:
-                logger.warning(f"Groq init failed: {e}")
-
-        if self._llm is None:
+            self.model_name = settings.GEMINI_CHAT_MODEL
+            self.model_provider = "gemini"
+            logger.info(f"Using Gemini: {settings.GEMINI_CHAT_MODEL}")
+        elif _groq_available:
+            self.model_name = settings.GROQ_MODEL
+            self.model_provider = "groq"
+            logger.info(f"Using Groq: {settings.GROQ_MODEL}")
+        else:
             self.model_name = "template"
             self.model_provider = "fallback"
             logger.warning("No LLM available, using fallback response (template)")
@@ -99,31 +122,51 @@ class Generator:
 
         avg_score = sum(d["score"] for d in documents) / len(documents)
 
-        if self._llm is None:
+        if self.model_provider == "fallback":
             return self._fallback_response(question, documents), sources, avg_score
 
-        try:
-            from langchain_core.messages import HumanMessage, SystemMessage
+        prompt = f"Context:\n{context}\n\nQuestion: {question}"
 
-            messages = [
-                SystemMessage(content=SYSTEM_PROMPT),
-                HumanMessage(content=f"Context:\n{context}\n\nQuestion: {question}"),
-            ]
+        # Failover order: primary provider first, then the other LLM if a key exists.
+        # (Module-level _gemini_available/_groq_available are import-time; read
+        # settings live so a key added without reimport still gets tried.)
+        attempts: list[str] = []
+        if self.model_provider == "gemini":
+            attempts.append("gemini")
+        elif self.model_provider == "groq":
+            attempts.append("groq")
+        else:
+            if settings.GEMINI_API_KEY:
+                attempts.append("gemini")
+            if settings.GROQ_API_KEY:
+                attempts.append("groq")
+        if self.model_provider == "gemini" and settings.GROQ_API_KEY and "groq" not in attempts:
+            attempts.append("groq")
+        if self.model_provider == "groq" and settings.GEMINI_API_KEY and "gemini" not in attempts:
+            attempts.append("gemini")
 
-            response = self._llm.invoke(messages)
-            tokens = 0
-            if hasattr(response, "usage_metadata"):
-                tokens = response.usage_metadata.get("total_tokens", 0)
-            elif hasattr(response, "response_metadata"):
-                tokens = response.response_metadata.get("token_usage", {}).get("total_tokens", 0)
-
-            self.last_tokens = tokens
-            TOKENS_USED.labels(model=settings.GEMINI_CHAT_MODEL).inc(tokens)
-            return response.content, sources, avg_score
-
-        except Exception as e:
-            logger.error(f"LLM invocation failed: {e}")
+        if not attempts:
             return self._fallback_response(question, documents), sources, avg_score
+
+        model_for = {"gemini": settings.GEMINI_CHAT_MODEL, "groq": settings.GROQ_MODEL}
+        last_error: Exception | None = None
+        for provider in attempts:
+            try:
+                if provider == "gemini":
+                    content, tokens = _call_gemini(prompt)
+                else:
+                    content, tokens = _call_groq(prompt)
+                self.model_provider = provider
+                self.model_name = model_for[provider]
+                self.last_tokens = tokens
+                TOKENS_USED.labels(model=self.model_name).inc(tokens)
+                return content, sources, avg_score
+            except Exception as e:
+                last_error = e
+                logger.error(f"LLM invocation failed ({provider}/{model_for[provider]}): {e}")
+
+        logger.error(f"All LLM providers failed, using fallback. Last error: {last_error}")
+        return self._fallback_response(question, documents), sources, avg_score
 
     def _format_context(self, documents: List[dict]) -> str:
         parts = []

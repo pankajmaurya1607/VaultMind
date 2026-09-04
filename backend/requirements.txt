@@ -1,9 +1,10 @@
 # Core
 fastapi==0.115.0
-uvicorn[standard]==0.30.6
+uvicorn==0.30.6
 pydantic==2.9.2
 pydantic-settings==2.5.2
 python-multipart==0.0.12
+httpx==0.28.1
 
 # Database
 sqlalchemy==2.0.35
@@ -22,29 +23,10 @@ bcrypt==4.2.1
 celery==5.4.0
 redis==5.1.1
 
-# AI / RAG - minimal (single LLM + local embeddings)
-langchain-core==0.3.15
-langchain-google-genai==2.0.0
-langchain-groq==0.2.1
-sentence-transformers==3.1.1
+# AI / RAG - local ONNX embeddings (CPU-only, no torch/CUDA) + direct LLM HTTP calls
+# BAAI/bge-small-en-v1.5 via FastEmbed (~67MB model, onnxruntime, zero nvidia deps)
+fastembed==0.6.0
 
-# Document Parsing - minimal RAG formats (PDF/DOCX/TXT/MD/CSV/XLSX)
+# Document Parsing - demo set: PDF/DOCX/TXT/MD only (no pandas/numpy stack)
 pypdf==4.3.1
 python-docx==1.1.2
-openpyxl==3.1.5
-pandas==2.2.3
-
-# Monitoring - lightweight
-prometheus-client==0.20.0
-
-# Pinned transitive deps to avoid pip backtracking
-grpcio==1.62.3
-grpcio-status==1.62.3
-google-api-core==2.19.0
-google-auth==2.28.0
-google-generativeai==0.7.2
-google-ai-generativelanguage==0.6.6
-googleapis-common-protos==1.63.2
-proto-plus==1.23.0
-protobuf==4.25.3
-pydantic-core==2.23.4

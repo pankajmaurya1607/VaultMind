@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { FileText, Search, MessageSquare, Shield, Clock, ScrollText, ArrowRight, Sparkles } from "lucide-react"
 
 const features = [
-  { icon: FileText, title: "Document Management", desc: "Upload PDF, DOCX, CSV, and more. Automatic parsing, chunking, and indexing." },
+  { icon: FileText, title: "Document Management", desc: "Upload PDF, DOCX, TXT, and MD. Automatic parsing, chunking, and indexing." },
   { icon: Search, title: "AI-Powered Search", desc: "Semantic search across all your documents with relevance scoring and highlights." },
   { icon: MessageSquare, title: "Smart Chat", desc: "Ask questions in natural language. Get answers with cited sources and confidence scores." },
   { icon: Shield, title: "Role-Based Access", desc: "Admin, Manager, and Employee roles with department-scoped permissions." },

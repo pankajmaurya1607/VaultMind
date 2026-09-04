@@ -8,60 +8,16 @@ from app.models.department import Department
 from app.models.role import Role
 from app.models.user import User
 from app.rbac.dependencies import require_admin
-from app.repositories.audit import AuditLogRepository
 from app.repositories.department import DepartmentRepository
 from app.repositories.role import RoleRepository
-from app.schemas.audit import AuditLogResponse
 from app.schemas.department import DepartmentResponse
-from app.schemas.monitoring import SystemMetrics
-from app.schemas.pagination import Paginated
 from app.schemas.role import RoleResponse
-from app.services.monitoring import MonitoringService
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
 
 class CreateLabelIn(BaseModel):
     name: str
-
-
-@router.get("/metrics", response_model=SystemMetrics)
-async def get_metrics(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin),
-):
-    service = MonitoringService(db)
-    return await service.get_metrics()
-
-
-@router.get("/audit", response_model=Paginated[AuditLogResponse])
-async def get_audit_logs(
-    skip: int = 0,
-    limit: int = 100,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin),
-):
-    repo = AuditLogRepository(db)
-    logs = await repo.list_recent(skip, limit)
-    total = await repo.count()
-    return Paginated[AuditLogResponse](
-        items=[
-            AuditLogResponse(
-                id=log.id,
-                user_email=log.user_email,
-                action=log.action,
-                resource=log.resource,
-                details=log.details,
-                ip_address=log.ip_address,
-                success=log.success,
-                created_at=log.created_at,
-            )
-            for log in logs
-        ],
-        total=total,
-        skip=skip,
-        limit=limit,
-    )
 
 
 @router.get("/departments", response_model=list[DepartmentResponse])

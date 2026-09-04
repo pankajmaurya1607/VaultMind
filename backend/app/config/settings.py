@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     # Upload
     UPLOAD_DIR: str = "./uploads"
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024
-    ALLOWED_EXTENSIONS: List[str] = [".pdf", ".docx", ".md", ".csv", ".xlsx", ".txt"]
+    ALLOWED_EXTENSIONS: List[str] = [".pdf", ".docx", ".txt", ".md"]
 
     # Chunking
     CHUNK_SIZE: int = 1000

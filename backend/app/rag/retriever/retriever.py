@@ -106,7 +106,7 @@ class Retriever:
         db: Optional[AsyncSession] = None,
     ) -> List[dict]:
         k = top_k or settings.TOP_K
-        # SentenceTransformer.encode is CPU-bound sync code - offload it.
+        # Embedding encode is CPU-bound sync code - offload it.
         query_vector = await asyncio.to_thread(embedding_service.embed_query, query)
 
         # Fallback for zero vectors (local without torch)

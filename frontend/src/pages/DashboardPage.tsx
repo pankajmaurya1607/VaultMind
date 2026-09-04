@@ -10,7 +10,7 @@ const cards = [
     to: "/documents",
     icon: Files,
     title: "Documents",
-    desc: "Upload and manage your knowledge base files. PDF, DOCX, CSV, and more.",
+    desc: "Upload and manage your knowledge base files. PDF, DOCX, TXT, and MD.",
   },
   {
     to: "/search",

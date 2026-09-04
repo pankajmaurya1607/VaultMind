@@ -15,5 +15,5 @@ class ChatSession(Base):
 
     user = relationship("User", back_populates="chat_sessions")
     messages = relationship(
-        "Message", back_populates="session", cascade="all, delete-orphan", order_by="Message.created_at"
+        "Message", back_populates="session", cascade="all, delete-orphan", order_by="Message.id"
     )

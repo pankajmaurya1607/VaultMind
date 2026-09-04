@@ -6,7 +6,7 @@ A lean Retrieval-Augmented Generation platform built for fast deployment: FastAP
 
 - **🔐 Auth** - Bearer JWT (with HttpOnly cookie fallback), bcrypt, token blacklist
 - **👥 RBAC** - Roles Admin/Manager/Employee + department isolation at SQL level
-- **📄 Documents** - Streamed uploads (10 MB), PDF/DOCX/MD/CSV/XLSX/TXT → Celery parse/chunk/embed
+- **📄 Documents** - Streamed uploads (10 MB), PDF/DOCX/TXT/MD → Celery parse/chunk/embed
 - **🔍 Vector Search** - Cosine similarity HNSW PGVector, dept-filtered, parameterized SQL
 - **💬 Chat** - Context-aware answers with citations + confidence; `asyncio.to_thread` offload
 - **⚡ Async** - Celery worker `document_processing` queue, 4 concurrency, retry 3×

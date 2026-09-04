@@ -79,7 +79,7 @@ function formatAnswer(text: string) {
       .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
       .replace(/\*(.*?)\*/g, "<em>$1</em>")
       .replace(/\[(\d+)\]/g, '<span class="inline-flex items-center justify-center rounded bg-primary/10 text-primary text-[10px] px-1 py-0 ml-1">$1</span>')
-      .replace(/\[([^\]]+\.(pdf|docx|txt|md|csv|xlsx))\]/gi, '<span class="inline-flex items-center gap-1 rounded bg-primary/10 text-primary text-[11px] px-1.5 py-0 ml-1">📄 $1</span>')
+      .replace(/\[([^\]]+\.(pdf|docx|txt|md))\]/gi, '<span class="inline-flex items-center gap-1 rounded bg-primary/10 text-primary text-[11px] px-1.5 py-0 ml-1">📄 $1</span>')
     if (isHeading) {
       out.push(<p key={i} className="text-sm font-semibold mt-3 mb-1 flex items-center gap-1.5" dangerouslySetInnerHTML={{ __html: html }} />)
     } else {
@@ -153,6 +153,9 @@ export default function ChatPage() {
 
   const pendingAnswer = send.data && send.data.session_id === activeId && send.isSuccess ? send.data : null
   const answerInHistory = pendingAnswer != null && (messages ?? []).some((m) => m.role === "assistant" && m.content === pendingAnswer.answer)
+  // Belt-and-braces: backend orders by (created_at, id), but sort here too so a
+  // refetch after login can never render an answer above its question.
+  const sortedMessages = [...(messages ?? [])].sort((a, b) => a.id - b.id)
 
   const handleSend = async () => {
     const trimmed = input.trim()
@@ -299,7 +302,7 @@ export default function ChatPage() {
                   {!isNew && !messagesLoading && !messagesError && (!messages || messages.length === 0) && (
                     <p className="py-12 text-center text-sm text-muted-foreground">No messages yet. Start the conversation below.</p>
                   )}
-                    {messages?.map((m) => (
+                    {sortedMessages.map((m) => (
                     <div key={m.id} className={cn("flex gap-3", m.role === "user" ? "justify-end" : "justify-start")}>
                       {m.role === "assistant" && (
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">

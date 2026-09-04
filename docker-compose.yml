@@ -45,10 +45,13 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+      # Persist the ~67MB FastEmbed ONNX model across restarts/rebuilds.
+      FASTEMBED_CACHE_PATH: /app/.fastembed_cache
     ports:
       - "8000:8000"
     volumes:
       - uploads:/app/uploads
+      - fastembed_cache:/app/.fastembed_cache
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health || exit 1"]
       interval: 10s
@@ -78,8 +81,10 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       CELERY_WORKER_POOL: prefork
       CELERY_WORKER_CONCURRENCY: 4
+      FASTEMBED_CACHE_PATH: /app/.fastembed_cache
     volumes:
       - uploads:/app/uploads
+      - fastembed_cache:/app/.fastembed_cache
     depends_on:
       postgres:
         condition: service_healthy
@@ -105,6 +110,7 @@ services:
 volumes:
   postgres_data:
   uploads:
+  fastembed_cache:
 
 networks:
   edge:

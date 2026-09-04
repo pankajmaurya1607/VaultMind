@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { Upload, FileText, Loader2 } from "lucide-react"
 
-const ALLOWED = [".pdf", ".docx", ".md", ".csv", ".xlsx", ".txt"]
+const ALLOWED = [".pdf", ".docx", ".txt", ".md"]
 
 function extractError(err: unknown): string {
   const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
@@ -83,7 +83,7 @@ export default function UploadDialog({ open, onOpenChange }: { open: boolean; on
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Upload Document</DialogTitle>
-          <DialogDescription>PDF, DOCX, MD, CSV, XLSX, TXT · Max 10 MB</DialogDescription>
+          <DialogDescription>PDF, DOCX, TXT, MD · Max 10 MB</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
@@ -108,7 +108,7 @@ export default function UploadDialog({ open, onOpenChange }: { open: boolean; on
               dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50 hover:bg-accent"
             }`}
           >
-            <input ref={inputRef} type="file" accept=".pdf,.docx,.md,.csv,.xlsx,.txt" className="hidden" onChange={handleSelect} />
+            <input ref={inputRef} type="file" accept=".pdf,.docx,.txt,.md" className="hidden" onChange={handleSelect} />
             <div className="rounded-full bg-primary/10 p-3 mb-3">
               <FileText className="h-6 w-6 text-primary" />
             </div>
@@ -116,7 +116,7 @@ export default function UploadDialog({ open, onOpenChange }: { open: boolean; on
               {file ? file.name : "Drop a file here or click to browse"}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {file ? `${(file.size / 1024).toFixed(1)} KB` : "PDF, DOCX, MD, CSV, XLSX, TXT"}
+              {file ? `${(file.size / 1024).toFixed(1)} KB` : "PDF, DOCX, TXT, MD"}
             </p>
           </div>
 

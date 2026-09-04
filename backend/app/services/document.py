@@ -16,22 +16,20 @@ _UPLOAD_CHUNK_SIZE = 1024 * 1024  # 1 MiB
 
 
 def _zip_magic(head: bytes) -> bool:
-    # docx/xlsx are ZIP containers
+    # docx is a ZIP container
     return head.startswith(b"PK\x03\x04")
 
 
 def _text_magic(head: bytes) -> bool:
-    # txt/md/csv: reject binary payloads (NUL byte heuristic)
+    # txt/md: reject binary payloads (NUL byte heuristic)
     return b"\x00" not in head
 
 
 _MAGIC_VALIDATORS = {
     ".pdf": lambda head: head.startswith(b"%PDF"),
     ".docx": _zip_magic,
-    ".xlsx": _zip_magic,
     ".txt": _text_magic,
     ".md": _text_magic,
-    ".csv": _text_magic,
 }
 
 

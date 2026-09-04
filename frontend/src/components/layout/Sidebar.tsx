@@ -18,8 +18,6 @@ import {
   Search,
   MessageSquare,
   Users,
-  ScrollText,
-  BarChart3,
   Building2,
   LogOut,
   MoreVertical,
@@ -37,8 +35,6 @@ const navItems = [
 
 const adminItems = [
   { to: "/admin/users", label: "Users", icon: Users },
-  { to: "/admin/audit", label: "Audit Log", icon: ScrollText },
-  { to: "/admin/metrics", label: "Metrics", icon: BarChart3 },
   { to: "/admin/departments", label: "Departments", icon: Building2 },
 ]
 

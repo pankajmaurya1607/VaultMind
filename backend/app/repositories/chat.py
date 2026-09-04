@@ -53,7 +53,7 @@ class MessageRepository(BaseRepository[Message]):
 
     async def get_by_session(self, session_id: int) -> list[Message]:
         result = await self.db.execute(
-            select(Message).where(Message.session_id == session_id).order_by(Message.created_at)
+            select(Message).where(Message.session_id == session_id).order_by(Message.created_at, Message.id)
         )
         return list(result.scalars().all())
 

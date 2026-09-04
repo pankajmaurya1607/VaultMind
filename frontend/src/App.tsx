@@ -16,8 +16,6 @@ const DocumentsPage = lazy(() => import("./pages/DocumentsPage"))
 const SearchPage = lazy(() => import("./pages/SearchPage"))
 const ChatPage = lazy(() => import("./pages/ChatPage"))
 const AdminUsersPage = lazy(() => import("./pages/AdminUsersPage"))
-const AdminAuditPage = lazy(() => import("./pages/AdminAuditPage"))
-const AdminMetricsPage = lazy(() => import("./pages/AdminMetricsPage"))
 const AdminDepartmentsPage = lazy(() => import("./pages/AdminDepartmentsPage"))
 
 const queryClient = new QueryClient({
@@ -96,8 +94,6 @@ function AppRoutes() {
         <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
         <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
         <Route path="/admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
-        <Route path="/admin/audit" element={<AdminRoute><AdminAuditPage /></AdminRoute>} />
-        <Route path="/admin/metrics" element={<AdminRoute><AdminMetricsPage /></AdminRoute>} />
         <Route path="/admin/departments" element={<AdminRoute><AdminDepartmentsPage /></AdminRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>

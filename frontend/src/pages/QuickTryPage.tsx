@@ -75,7 +75,7 @@ function formatAnswer(text: string) {
       .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
       .replace(/\*(.*?)\*/g, "<em>$1</em>")
       .replace(/\[(\d+)\]/g, '<span class="inline-flex items-center justify-center rounded bg-primary/10 text-primary text-[10px] px-1.5 py-0 ml-1">$1</span>')
-      .replace(/\[([^\]]+\.(pdf|docx|txt|md|csv|xlsx))\]/gi, '<span class="inline-flex items-center gap-1 rounded bg-primary/10 text-primary text-[11px] px-1.5 py-0 ml-1">📄 $1</span>')
+      .replace(/\[([^\]]+\.(pdf|docx|txt|md))\]/gi, '<span class="inline-flex items-center gap-1 rounded bg-primary/10 text-primary text-[11px] px-1.5 py-0 ml-1">📄 $1</span>')
     if (isHeading) {
       out.push(<p key={i} className="text-sm font-semibold mt-3 mb-1 flex items-center gap-1.5" dangerouslySetInnerHTML={{ __html: html }} />)
     } else {
@@ -318,7 +318,7 @@ export default function QuickTryPage() {
         <div className="mb-6 text-center">
           <h1 className="text-3xl font-semibold tracking-tight">Try VaultMind instantly</h1>
           <p className="mt-2 text-sm text-muted-foreground max-w-2xl mx-auto">
-            Upload a file <strong>&lt;1MB</strong> (PDF, DOCX, TXT, MD, CSV, XLSX) and chat with it immediately. No signup. Auto-deletes in <strong>10 minutes</strong>.
+            Upload a file <strong>&lt;1MB</strong> (PDF, DOCX, TXT, MD) and chat with it immediately. No signup. Auto-deletes in <strong>10 minutes</strong>.
           </p>
           <div className="mt-3 flex items-center justify-center gap-2 text-xs text-muted-foreground">
             <Shield className="h-3.5 w-3.5" /> No account needed · <Clock className="h-3.5 w-3.5" /> TTL 10 min · <FileText className="h-3.5 w-3.5" /> 1 file per session
@@ -342,8 +342,8 @@ export default function QuickTryPage() {
                 >
                   <div className="rounded-full bg-primary/10 p-3 mb-3"><Upload className="h-5 w-5 text-primary" /></div>
                   <p className="text-sm font-medium">Drop file or click to browse</p>
-                  <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, TXT, MD, CSV, XLSX · &lt;1MB</p>
-                  <input ref={fileRef} type="file" className="hidden" accept=".pdf,.docx,.txt,.md,.csv,.xlsx" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = "" }} />
+                  <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, TXT, MD · &lt;1MB</p>
+                  <input ref={fileRef} type="file" className="hidden" accept=".pdf,.docx,.txt,.md" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = "" }} />
                 </div>
 
                 {upload.isPending && <p className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Uploading...</p>}

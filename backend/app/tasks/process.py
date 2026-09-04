@@ -27,18 +27,6 @@ def parse_file(file_path: str, mime_type: str) -> str:
         with open(file_path, "rb") as f:
             return f.read().decode("utf-8")
 
-    elif ext == ".csv":
-        import pandas as pd
-
-        df = pd.read_csv(file_path)
-        return df.to_string()
-
-    elif ext == ".xlsx":
-        import pandas as pd
-
-        df = pd.read_excel(file_path)
-        return df.to_string()
-
     elif ext == ".txt":
         with open(file_path, "rb") as f:
             return f.read().decode("utf-8")
