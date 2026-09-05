@@ -9,8 +9,6 @@ A production-grade, enterprise Retrieval-Augmented Generation (RAG) platform tha
 | Component | URL | Notes |
 |---|---|---|
 | 🧠 **Live Application** | [https://vaultmind-ai.duckdns.org](https://vaultmind-ai.duckdns.org) | Full SPA with Guest Quick-Try & Document RAG |
-| 📊 **User & Admin Portal** | [https://vaultmind-ai.duckdns.org/login](https://vaultmind-ai.duckdns.org/login) | Role-scoped access (Admin, Manager, Employee) |
-| ⚡ **API Health & Metrics** | [https://vaultmind-ai.duckdns.org/health](https://vaultmind-ai.duckdns.org/health) | Real-time system health check |
 
 ---
 
