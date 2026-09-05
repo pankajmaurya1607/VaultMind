@@ -83,17 +83,20 @@ Given a query or document upload, it automatically:
 ## 📸 Screenshots
 Here is a look at the VaultMind user interface and administrative flows:
 
-### 1. Core Capabilities & Architectural Pillars
-![Core Capabilities](docs/screenshots/01-features-overview.png)
+### 1. Landing Page — Enterprise Knowledge Assistant
+![Landing Page](docs/screenshots/01-landing-hero.png)
 
-### 2. How It Works — Ingestion to Intelligence
-![How It Works](docs/screenshots/02-how-it-works.png)
+### 2. Core Capabilities & Architectural Pillars
+![Core Capabilities](docs/screenshots/02-features-overview.png)
 
-### 3. Instant Guest Quick-Try Sandbox (No Signup Needed)
-![Guest Quick-Try Sandbox](docs/screenshots/03-quick-try-guest-chat.png)
+### 3. How It Works — Ingestion to Intelligence
+![How It Works](docs/screenshots/03-how-it-works.png)
 
-### 4. Employee Dashboard & Department Knowledge Hub
-![Employee Dashboard](docs/screenshots/04-employee-dashboard.png)
+### 4. Instant Guest Quick-Try Sandbox (No Signup Needed)
+![Guest Quick-Try Sandbox](docs/screenshots/04-quick-try-guest-chat.png)
+
+### 5. Employee Dashboard & Department Knowledge Hub
+![Employee Dashboard](docs/screenshots/05-employee-dashboard.png)
 
 ---
 
